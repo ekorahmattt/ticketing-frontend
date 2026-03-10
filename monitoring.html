@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Service Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes glowOpen {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0), 0 0 30px rgba(239, 68, 68, 0.0);
+            }
+
+            50% {
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.35), 0 0 36px rgba(239, 68, 68, 0.45);
+            }
+        }
+
+        .ticket-glow-open {
+            animation: glowOpen 1.1s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-950 text-white h-screen overflow-hidden">
+    <div class="h-full flex flex-col">
+        <!-- HEADER -->
+        <header class="w-full bg-gray-900/80 border-b border-white/10 px-10 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-tight">
+                        IT Service Monitoring Center
+                    </h1>
+                    <p class="text-base text-white/70">
+                        RSUD - Monitoring Gangguan Realtime
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-base text-white/70">Waktu</p>
+                    <p id="clock" class="text-3xl font-bold tabular-nums tracking-tight"></p>
+                </div>
+            </div>
+        </header>
+
+        <!-- LIST TICKETS + MAP -->
+        <main class="flex-1 min-h-0 p-8">
+            <div class="grid grid-cols-12 gap-6 h-full min-h-0">
+                <!-- STATISTICS + LIST TICKETS (LEFT) -->
+                <section class="col-span-5 flex flex-col min-h-0">
+                    <!-- STATISTICS -->
+                    <div class="bg-gray-900/60 border border-white/10 rounded-2xl p-4">
+                        <div class="grid grid-cols-4 gap-4 items-stretch">
+                            <div
+                                class="bg-gray-800 rounded-xl shadow-lg px-4 py-4 border border-white/10 h-full flex flex-col justify-center">
+                                <div id="statOpen" class="text-4xl font-bold text-red-400 tabular-nums">0</div>
+                                <div class="mt-1 text-sm text-white/70">Open</div>
+                            </div>
+                            <div
+                                class="bg-gray-800 rounded-xl shadow-lg px-4 py-4 border border-white/10 h-full flex flex-col justify-center">
+                                <div id="statProcess" class="text-4xl font-bold text-yellow-300 tabular-nums">0</div>
+                                <div class="mt-1 text-sm text-white/70">Process</div>
+                            </div>
+                            <div
+                                class="bg-gray-800 rounded-xl shadow-lg px-4 py-4 border border-white/10 h-full flex flex-col justify-center">
+                                <div id="statDone" class="text-4xl font-bold text-green-400 tabular-nums">0</div>
+                                <div class="mt-1 text-sm text-white/70">Done</div>
+                            </div>
+                            <div
+                                class="bg-gray-800 rounded-xl shadow-lg px-4 py-4 border border-white/10 h-full flex flex-col justify-center">
+                                <div id="statTotal" class="text-4xl font-bold text-blue-400 tabular-nums">0</div>
+                                <div class="mt-1 text-sm text-white/70">Total</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIST TICKETS -->
+                    <section class="mt-4 bg-gray-900/60 border border-white/10 rounded-2xl p-6 flex flex-col min-h-0">
+                        <div class="flex items-center justify-between pb-4 border-b border-white/10">
+                            <h2 class="text-2xl font-bold tracking-tight">Daftar Laporan Masuk</h2>
+                            <div class="text-base text-white/70">Live</div>
+                        </div>
+
+                        <div id="ticketList" class="mt-6 space-y-4 overflow-y-auto pr-2 min-h-0">
+                        </div>
+                    </section>
+                </section>
+
+                <!-- MAP -->
+                <section class="col-span-7 bg-gray-900/60 border border-white/10 rounded-2xl p-6 flex flex-col min-h-0">
+                    <div class="pb-4 border-b border-white/10">
+                        <h2 class="text-2xl font-bold tracking-tight">Denah / Monitoring Map</h2>
+                    </div>
+
+                    <div class="mt-6 flex-1 min-h-0">
+                        <div
+                            class="relative h-full w-full rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-white/10 overflow-hidden">
+                            <div class="absolute inset-0 opacity-20"
+                                style="background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.12) 1px, transparent 0); background-size: 28px 28px;">
+                            </div>
+
+                            <div class="absolute top-16 left-20">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-red-500 shadow-lg shadow-red-500/30 ring-2 ring-white/20">
+                                </div>
+                                <div class="mt-2 text-sm text-white/80">IGD</div>
+                            </div>
+
+                            <div class="absolute top-28 right-32">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-yellow-400 shadow-lg shadow-yellow-400/30 ring-2 ring-white/20">
+                                </div>
+                                <div class="mt-2 text-sm text-white/80">RAWAT INAP</div>
+                            </div>
+
+                            <div class="absolute bottom-28 left-24">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-green-500 shadow-lg shadow-green-500/30 ring-2 ring-white/20">
+                                </div>
+                                <div class="mt-2 text-sm text-white/80">LAB</div>
+                            </div>
+
+                            <div class="absolute bottom-20 right-24">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-green-500 shadow-lg shadow-green-500/30 ring-2 ring-white/20">
+                                </div>
+                                <div class="mt-2 text-sm text-white/80">RADIOLOGI</div>
+                            </div>
+
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-yellow-400 shadow-lg shadow-yellow-400/30 ring-2 ring-white/20">
+                                </div>
+                                <div class="mt-2 text-sm text-white/80 text-center">FARMASI</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        const statusPriority = {
+            open: 0,
+            process: 1,
+            done: 2
+        };
+
+        function formatTimeHHmm(dateOrTs) {
+            const d = typeof dateOrTs === "number" ? new Date(dateOrTs) : dateOrTs;
+            return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
+        }
+
+        function todayTimestampFromHHmm(hhmm) {
+            const [h, m] = String(hhmm).split(":").map((v) => Number(v));
+            const now = new Date();
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
+            return d.getTime();
+        }
+
+        const tickets = [
+            {
+                id: "TCK-20260221-009",
+                status: "open",
+                unit: "IGD",
+                category: "HARDWARE",
+                subcategory: "PRINTER TIDAK BISA CETAK",
+                createdAt: todayTimestampFromHHmm("22:45"),
+                isNew: true
+            },
+            {
+                id: "TCK-20260221-010",
+                status: "process",
+                unit: "RAWAT INAP",
+                category: "NETWORK",
+                subcategory: "JARINGAN LAMBAT",
+                createdAt: todayTimestampFromHHmm("22:50"),
+                isNew: false
+            },
+            {
+                id: "TCK-20260221-011",
+                status: "process",
+                unit: "LAB",
+                category: "APPLICATION",
+                subcategory: "SIMRS ERROR LOGIN",
+                createdAt: todayTimestampFromHHmm("23:02"),
+                isNew: false
+            },
+            {
+                id: "TCK-20260221-012",
+                status: "done",
+                unit: "RADIOLOGI",
+                category: "HARDWARE",
+                subcategory: "PC TIDAK MENYALA",
+                createdAt: todayTimestampFromHHmm("23:10"),
+                isNew: false
+            },
+            {
+                id: "TCK-20260221-013",
+                status: "open",
+                unit: "FARMASI",
+                category: "NETWORK",
+                subcategory: "WIFI PUTUS-SAMBUNG",
+                createdAt: todayTimestampFromHHmm("23:18"),
+                isNew: false
+            },
+            {
+                id: "TCK-20260221-014",
+                status: "process",
+                unit: "POLIKLINIK",
+                category: "APPLICATION",
+                subcategory: "SIMPUS LAMBAT",
+                createdAt: todayTimestampFromHHmm("23:26"),
+                isNew: false
+            },
+            {
+                id: "TCK-20260221-015",
+                status: "done",
+                unit: "ICU",
+                category: "NETWORK",
+                subcategory: "LAN NORMAL KEMBALI",
+                createdAt: todayTimestampFromHHmm("23:31"),
+                isNew: false
+            }
+        ];
+
+        function getStatusConfig(status) {
+            switch (status) {
+                case "open":
+                    return {
+                        gradientClass: "bg-gradient-to-b from-red-500 to-red-700",
+                        badgeClass: "bg-red-600 text-white",
+                    };
+                case "process":
+                    return {
+                        gradientClass: "bg-gradient-to-b from-yellow-400 to-yellow-600",
+                        badgeClass: "bg-yellow-500 text-black",
+                    };
+                case "done":
+                    return {
+                        gradientClass: "bg-gradient-to-b from-green-500 to-green-700",
+                        badgeClass: "bg-green-600 text-white",
+                    };
+                default:
+                    return {
+                        gradientClass: "bg-gradient-to-b from-gray-600 to-gray-700",
+                        badgeClass: "bg-gray-700 text-white",
+                    };
+            }
+        }
+
+        function renderTickets() {
+            const container = document.getElementById("ticketList");
+            const sortedTickets = [...tickets].sort((a, b) => {
+                const pa = statusPriority[a.status] ?? 99;
+                const pb = statusPriority[b.status] ?? 99;
+                if (pa !== pb) return pa - pb;
+                const ta = Number(a.createdAt || 0);
+                const tb = Number(b.createdAt || 0);
+                return tb - ta;
+            });
+
+            container.innerHTML = sortedTickets.map((t) => {
+                const cfg = getStatusConfig(t.status);
+                const isNewClass = t.isNew ? (t.status === "open" ? "ticket-glow-open" : "animate-pulse") : "";
+                const timeText = t.createdAt ? formatTimeHHmm(t.createdAt) : "";
+                return `
+                    <div class="relative overflow-hidden bg-gray-800 rounded-xl shadow-lg p-6 min-h-[120px] border border-white/10 ${isNewClass}">
+                        <div class="absolute right-0 top-0 h-full w-3 ${cfg.gradientClass}"></div>
+
+                        <div class="flex items-start justify-between gap-6 pr-6">
+                            <div class="font-semibold text-lg tracking-tight text-white/90">${t.id}</div>
+                            <div class="shrink-0">
+                                <span class="inline-flex items-center px-3 py-1 text-sm font-extrabold rounded-full ${cfg.badgeClass}">
+                                    ${String(t.status).toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-2xl font-bold uppercase tracking-wide pr-6">
+                            ${t.unit}
+                        </div>
+
+                        <div class="mt-4 flex items-end justify-between gap-6 pr-6">
+                            <div class="text-lg text-gray-200">
+                                ${t.category} - ${t.subcategory}
+                            </div>
+                            <div class="text-sm opacity-70 tabular-nums">
+                                ${timeText}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            const openCount = tickets.filter(t => t.status === "open").length;
+            const processCount = tickets.filter(t => t.status === "process").length;
+            const doneCount = tickets.filter(t => t.status === "done").length;
+            const totalCount = tickets.length;
+
+            document.getElementById("statOpen").textContent = String(openCount);
+            document.getElementById("statProcess").textContent = String(processCount);
+            document.getElementById("statDone").textContent = String(doneCount);
+            document.getElementById("statTotal").textContent = String(totalCount);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const date = now.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+            const time = now.toLocaleTimeString("id-ID", { hour12: false });
+            document.getElementById("clock").textContent = `${date} ${time}`;
+        }
+
+        function createTicketId() {
+            const now = new Date();
+            const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
+            const seq = String(Math.floor(Math.random() * 900) + 100);
+            return `TCK-${ymd}-${seq}`;
+        }
+
+        function markTicketNotNewLater(ticket, delayMs = 7000) {
+            window.setTimeout(() => {
+                ticket.isNew = false;
+                renderTickets();
+            }, delayMs);
+        }
+
+        function simulateNewTicket() {
+            const now = Date.now();
+            const pick = Math.random();
+            const status = pick < 0.55 ? "open" : pick < 0.85 ? "process" : "done";
+            const units = ["IGD", "RAWAT INAP", "LAB", "RADIOLOGI", "FARMASI", "ICU", "POLIKLINIK", "GIZI"];
+            const issues = [
+                { category: "NETWORK", subcategory: "WIFI PUTUS-SAMBUNG" },
+                { category: "HARDWARE", subcategory: "PRINTER MACET" },
+                { category: "APPLICATION", subcategory: "SIMRS TIDAK BISA LOGIN" },
+                { category: "HARDWARE", subcategory: "PC BLUE SCREEN" },
+                { category: "NETWORK", subcategory: "JARINGAN LAMBAT" }
+            ];
+
+            const unit = units[Math.floor(Math.random() * units.length)];
+            const issue = issues[Math.floor(Math.random() * issues.length)];
+
+            const ticket = {
+                id: createTicketId(),
+                status,
+                unit,
+                category: issue.category,
+                subcategory: issue.subcategory,
+                createdAt: now,
+                isNew: true
+            };
+
+            tickets.unshift(ticket);
+            renderTickets();
+
+            markTicketNotNewLater(ticket);
+        }
+
+        renderTickets();
+        tickets.filter(t => t.isNew).forEach((t) => markTicketNotNewLater(t, 6000));
+        updateClock();
+        setInterval(updateClock, 1000);
+        setInterval(simulateNewTicket, 8000);
+    </script>
+</body>
+
+</html>
