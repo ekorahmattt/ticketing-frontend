@@ -11,6 +11,16 @@ const MOCK_USER = {
   device_model: "ThinkCentre M720q",
 };
 
+const MOCK_EMPLOYEES = [
+  { name: "Budi Santoso", unit: "Poliklinik Penyakit Dalam" },
+  { name: "Siti Aminah", unit: "Instalasi Gawat Darurat" },
+  { name: "Andi Wijaya", unit: "Laboratorium Terpadu" },
+  { name: "Rina Kusuma", unit: "Pendaftaran" },
+  { name: "Eko Rahmad", unit: "IT RS" },
+  { name: "Dr. Tirta", unit: "Poli Anak" },
+  { name: "Dewi Lestari", unit: "Farmasi" },
+];
+
 const MOCK_HISTORY = [
   { category: "Hardware", subcategory: "Printer Error", status: "Closed", status_color: "green", created_at: "2024-05-01 10:00" },
   { category: "Software & Aplikasi", subcategory: "SIMRS Tidak Bisa Login", status: "Closed", status_color: "green", created_at: "2024-05-05 14:30" }
@@ -73,10 +83,42 @@ export default function Ticket() {
   const [user, setUser] = useState(MOCK_USER);
   const [history, setHistory] = useState(MOCK_HISTORY);
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
-  
+
+  const [isNameDropdownOpen, setIsNameDropdownOpen] = useState(false);
+  const [nameSearchQuery, setNameSearchQuery] = useState("");
+
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [unitSearchQuery, setUnitSearchQuery] = useState("");
+
+  const filteredNames = useMemo(() => {
+    const uniqueNames = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.name)));
+    return uniqueNames.filter(name => 
+      name.toLowerCase().includes(nameSearchQuery.toLowerCase())
+    );
+  }, [nameSearchQuery]);
+
+  const filteredUnits = useMemo(() => {
+    const uniqueUnits = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.unit)));
+    return uniqueUnits.filter(unit => 
+      unit.toLowerCase().includes(unitSearchQuery.toLowerCase())
+    );
+  }, [unitSearchQuery]);
+
+  const handleSelectName = (name) => {
+    setUser({ ...user, name });
+    setIsNameDropdownOpen(false);
+    setNameSearchQuery("");
+  };
+
+  const handleSelectUnit = (unit) => {
+    setUser({ ...user, unit });
+    setIsUnitDropdownOpen(false);
+    setUnitSearchQuery("");
+  };
+
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
-  
+
   const [ticketStatus, setTicketStatus] = useState("form"); // "form" | "submitted"
   const [ticketData, setTicketData] = useState(null);
 
@@ -128,7 +170,7 @@ export default function Ticket() {
 
   const handleSubmit = () => {
     const now = new Date();
-    const dString = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const dString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     setTicketData({
       code: generateTicketCode(),
       categoryText: selectedCategory ? `${selectedCategory}${selectedSubCategory ? " - " + selectedSubCategory : ""}` : "-",
@@ -152,7 +194,7 @@ export default function Ticket() {
   };
 
   const currentTime = new Date();
-  const reportTimeStr = `${currentTime.getFullYear()}-${String(currentTime.getMonth()+1).padStart(2,'0')}-${String(currentTime.getDate()).padStart(2,'0')} ${String(currentTime.getHours()).padStart(2,'0')}:${String(currentTime.getMinutes()).padStart(2,'0')}`;
+  const reportTimeStr = `${currentTime.getFullYear()}-${String(currentTime.getMonth() + 1).padStart(2, '0')}-${String(currentTime.getDate()).padStart(2, '0')} ${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
 
   return (
     <div className="bg-gray-100 min-h-screen">
@@ -164,7 +206,9 @@ export default function Ticket() {
 
             {/* Informasi Sistem */}
             <div className="bg-white rounded-2xl shadow p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">Informasi Sistem</h2>
+              <h3 className="text-lg font-bold ">
+                RAPB IT SERVICE & SUPPORT CENTER
+              </h3>
 
               {user.detection_mode === "LAN" ? (
                 <span className="inline-block px-3 py-1 text-xs bg-green-100 text-green-600 rounded-full">
@@ -177,13 +221,96 @@ export default function Ticket() {
               )}
 
               <div className="space-y-3 text-sm">
-                <div>
-                  <p className="text-gray-500">Nama Pelapor</p>
-                  <p className="font-medium">{user.name}</p>
+                <div className="relative">
+                  <div 
+                    className="cursor-pointer border border-transparent hover:border-gray-200 rounded p-2 -mx-2 transition flex justify-between items-center"
+                    onClick={() => setIsNameDropdownOpen(!isNameDropdownOpen)}
+                    title="Klik untuk mengubah nama pelapor"
+                  >
+                    <div>
+                      <p className="text-gray-500">Nama Pelapor</p>
+                      <p className="font-medium">{user.name}</p>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isNameDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  
+                  {isNameDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg top-full left-0">
+                      <div className="p-3 border-b border-gray-100">
+                        <input
+                          type="text"
+                          placeholder="Cari nama pegawai..."
+                          className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                          value={nameSearchQuery}
+                          onChange={(e) => setNameSearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        {filteredNames.length > 0 ? (
+                          filteredNames.map((name, idx) => (
+                            <div 
+                              key={idx} 
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                              onClick={() => handleSelectName(name)}
+                            >
+                              <p className="font-medium text-sm text-gray-800">{name}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-sm text-gray-500 text-center">Nama tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <p className="text-gray-500">Unit</p>
-                  <p className="font-medium">{user.unit}</p>
+
+                <div className="relative">
+                  <div 
+                    className="cursor-pointer border border-transparent hover:border-gray-200 rounded p-2 -mx-2 transition flex justify-between items-center"
+                    onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                    title="Klik untuk mengubah unit"
+                  >
+                    <div>
+                      <p className="text-gray-500">Unit</p>
+                      <p className="font-medium">{user.unit}</p>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isUnitDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  
+                  {isUnitDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg top-full left-0">
+                      <div className="p-3 border-b border-gray-100">
+                        <input
+                          type="text"
+                          placeholder="Cari unit..."
+                          className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                          value={unitSearchQuery}
+                          onChange={(e) => setUnitSearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        {filteredUnits.length > 0 ? (
+                          filteredUnits.map((unit, idx) => (
+                            <div 
+                              key={idx} 
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                              onClick={() => handleSelectUnit(unit)}
+                            >
+                              <p className="font-medium text-sm text-gray-800">{unit}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-sm text-gray-500 text-center">Unit tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-gray-500">Hostname</p>
@@ -225,12 +352,9 @@ export default function Ticket() {
 
           {/* ================= RIGHT PANEL ================= */}
           <div className="bg-white rounded-2xl shadow p-8 lg:col-span-2 flex flex-col h-full">
-            
+
             {ticketStatus === "form" && (
               <div className="flex-1 flex flex-col">
-                <h3 className="text-md font-semibold text-gray-700">
-                  RAPB IT SERVICE & SUPPORT CENTER
-                </h3>
                 <h1 className="text-2xl font-bold text-gray-800 mb-2">
                   LAPOR GANGGUAN
                 </h1>
@@ -243,8 +367,8 @@ export default function Ticket() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Kategori Gangguan
                   </label>
-                  <select 
-                    value={selectedCategory} 
+                  <select
+                    value={selectedCategory}
                     onChange={handleCategoryChange}
                     className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
@@ -261,8 +385,8 @@ export default function Ticket() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Jenis Gangguan
                     </label>
-                    <select 
-                      value={selectedSubCategory} 
+                    <select
+                      value={selectedSubCategory}
                       onChange={(e) => setSelectedSubCategory(e.target.value)}
                       className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     >
@@ -301,8 +425,8 @@ export default function Ticket() {
                   <button className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
                     Batal
                   </button>
-                  <button 
-                    onClick={handleSubmit} 
+                  <button
+                    onClick={handleSubmit}
                     disabled={!selectedCategory || !selectedSubCategory}
                     className={`px-6 py-3 rounded-lg text-white transition ${!selectedCategory || !selectedSubCategory ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                   >
@@ -321,7 +445,7 @@ export default function Ticket() {
                   </div>
                   <div className="bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium">OPEN</div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-3 text-sm">
                     <div>
@@ -352,7 +476,7 @@ export default function Ticket() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="border-t pt-6 mb-6">
                   <h2 className="text-lg font-semibold text-gray-700 mb-4">Timeline Status</h2>
                   <div className="space-y-4">
@@ -379,7 +503,7 @@ export default function Ticket() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end gap-3 mt-auto">
                   <button onClick={handleCloseTicket} className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
                     Tutup
@@ -402,7 +526,7 @@ export default function Ticket() {
               </div>
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
               <div className="flex flex-col gap-1 items-start max-w-[85%]">
                 <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm">
@@ -411,7 +535,7 @@ export default function Ticket() {
                 <span className="text-[10px] text-gray-400 ml-1">IT Support • 09:20 WIB</span>
               </div>
             </div>
-            
+
             <div className="mt-4 pt-4 border-t flex gap-2">
               <input type="text" placeholder="Ketik pesan..." className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 h-10 w-10 flex items-center justify-center transition shrink-0">

@@ -1,0 +1,191 @@
+Saya memiliki halaman **form laporan gangguan IT** berbasis **HTML + TailwindCSS + Vanilla JavaScript**.
+
+Saat ini terdapat **2 dropdown bertingkat**:
+
+* `categorySelect` → Kategori Gangguan
+* `subCategorySelect` → Jenis Gangguan
+
+Struktur ini sudah benar, tetapi saya ingin **memperbaiki UX dan tampilan dropdown tanpa mengubah konsep 2 dropdown**.
+
+Jangan ubah struktur sistem secara besar. Hanya perbaiki **interaksi, visual, dan usability**.
+
+---
+
+# Tujuan Perbaikan
+
+Tetap gunakan struktur:
+
+Kategori Gangguan
+→ Jenis Gangguan
+
+Tetapi buat pengalaman pengguna menjadi:
+
+* lebih cepat
+* lebih jelas
+* lebih modern
+
+---
+
+# Perubahan yang harus dilakukan
+
+## 1. Tambahkan Search pada Dropdown Jenis Gangguan
+
+Di atas `subCategorySelect`, tambahkan input pencarian:
+
+```html
+<input 
+type="text" 
+id="subCategorySearch"
+placeholder="Cari jenis gangguan..."
+class="w-full border rounded-lg p-3 mb-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
+```
+
+Fungsi search:
+
+* memfilter opsi di `subCategorySelect`
+* bekerja secara realtime
+* tidak mengubah data asli dropdown
+
+Contoh:
+
+User mengetik:
+
+```
+printer
+```
+
+Dropdown hanya menampilkan:
+
+```
+Printer tidak bisa cetak
+Printer macet
+Printer tidak terdeteksi
+```
+
+---
+
+## 2. Perbaiki Tampilan Dropdown
+
+Gunakan style Tailwind yang lebih modern:
+
+```html
+class="w-full border border-gray-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+```
+
+Tambahkan juga:
+
+* hover effect
+* focus ring
+* padding lebih nyaman
+
+---
+
+## 3. Animasi Saat Jenis Gangguan Muncul
+
+Saat kategori dipilih dan subcategory muncul, tambahkan animasi:
+
+```
+transition
+duration-200
+ease-in-out
+```
+
+Efek:
+
+* dropdown muncul lebih halus
+* UI terasa lebih modern
+
+---
+
+## 4. Reset Search Saat Kategori Berubah
+
+Jika user mengganti kategori:
+
+* kosongkan search input
+* reset dropdown jenis gangguan
+
+---
+
+## 5. Highlight SLA dengan Lebih Jelas
+
+Jika jenis gangguan dipilih dan memiliki `sla_minutes`, tampilkan:
+
+```
+Estimasi respon: 30 menit
+```
+
+Dengan style:
+
+```
+bg-blue-50
+text-blue-700
+font-medium
+```
+
+Jika belum memilih jenis gangguan:
+
+```
+Estimasi respon: -
+```
+
+---
+
+## 6. Tambahkan Placeholder yang Lebih Ramah User
+
+Kategori:
+
+```
+-- Pilih kategori gangguan --
+```
+
+Jenis:
+
+```
+-- Pilih jenis gangguan --
+```
+
+Search:
+
+```
+Cari jenis gangguan...
+```
+
+---
+
+# Behaviour yang Diharapkan
+
+Alur user:
+
+1. Pilih kategori gangguan
+2. Dropdown jenis gangguan muncul
+3. User bisa:
+
+   * scroll
+   * atau search
+4. Pilih jenis gangguan
+5. SLA otomatis diperbarui
+
+---
+
+# Batasan
+
+Jangan mengubah:
+
+* struktur JSON
+* struktur form
+* logic submit laporan
+* fungsi ticket
+
+Hanya fokus memperbaiki:
+
+* UX dropdown
+* search filtering
+* visual styling
+* interaksi user
+
+Gunakan **JavaScript vanilla tanpa library tambahan**.
+
+Refactor the existing code instead of rewriting the entire page.
+Only modify the category and subcategory selection system.
+Keep the rest of the page unchanged.
