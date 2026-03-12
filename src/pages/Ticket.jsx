@@ -118,6 +118,14 @@ export default function Ticket() {
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] = useState(false);
+  const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
+
+  const handleSelectSubCategory = (subCatName) => {
+    setSelectedSubCategory(subCatName);
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
+  };
 
   const [ticketStatus, setTicketStatus] = useState("form"); // "form" | "submitted"
   const [ticketData, setTicketData] = useState(null);
@@ -131,6 +139,12 @@ export default function Ticket() {
     const cat = categories.find(c => c.category_name === selectedCategory);
     return cat ? cat.subcategories : [];
   }, [selectedCategory, categories]);
+
+  const filteredSubCategories = useMemo(() => {
+    return subcategories.filter(s => 
+      s.name.toLowerCase().includes(subCategorySearchQuery.toLowerCase())
+    );
+  }, [subcategories, subCategorySearchQuery]);
 
   const slaInfo = useMemo(() => {
     if (selectedSubCategory) {
@@ -166,6 +180,8 @@ export default function Ticket() {
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value);
     setSelectedSubCategory("");
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
   };
 
   const handleSubmit = () => {
@@ -190,6 +206,8 @@ export default function Ticket() {
   const handleNewReport = () => {
     setSelectedCategory("");
     setSelectedSubCategory("");
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
     setTicketStatus("form");
   };
 
@@ -245,6 +263,14 @@ export default function Ticket() {
                           className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                           value={nameSearchQuery}
                           onChange={(e) => setNameSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (filteredNames.length > 0) {
+                                handleSelectName(filteredNames[0]);
+                              }
+                            }
+                          }}
                           autoFocus
                         />
                       </div>
@@ -291,6 +317,14 @@ export default function Ticket() {
                           className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                           value={unitSearchQuery}
                           onChange={(e) => setUnitSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (filteredUnits.length > 0) {
+                                handleSelectUnit(filteredUnits[0]);
+                              }
+                            }
+                          }}
                           autoFocus
                         />
                       </div>
@@ -381,20 +415,59 @@ export default function Ticket() {
 
                 {/* Subkategori */}
                 {subcategories.length > 0 && (
-                  <div className="mb-5">
+                  <div className="mb-5 relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Jenis Gangguan
                     </label>
-                    <select
-                      value={selectedSubCategory}
-                      onChange={(e) => setSelectedSubCategory(e.target.value)}
-                      className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    <div 
+                      className="w-full border rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                      onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
                     >
-                      <option value="">-- Pilih Jenis Gangguan --</option>
-                      {subcategories.map((s, idx) => (
-                        <option key={idx} value={s.name}>{s.name}</option>
-                      ))}
-                    </select>
+                      <span className={selectedSubCategory ? "text-gray-900" : "text-gray-500"}>
+                        {selectedSubCategory || "-- Pilih Jenis Gangguan --"}
+                      </span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isSubCategoryDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+
+                    {isSubCategoryDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg top-full left-0">
+                        <div className="p-3 border-b border-gray-100">
+                          <input
+                            type="text"
+                            placeholder="Cari jenis gangguan..."
+                            className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                            value={subCategorySearchQuery}
+                            onChange={(e) => setSubCategorySearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (filteredSubCategories.length > 0) {
+                                  handleSelectSubCategory(filteredSubCategories[0].name);
+                                }
+                              }
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                          {filteredSubCategories.length > 0 ? (
+                            filteredSubCategories.map((s, idx) => (
+                              <div 
+                                key={idx} 
+                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                                onClick={() => handleSelectSubCategory(s.name)}
+                              >
+                                <p className="font-medium text-sm text-gray-800">{s.name}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-sm text-gray-500 text-center">Jenis gangguan tidak ditemukan</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
