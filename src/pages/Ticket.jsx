@@ -92,14 +92,14 @@ export default function Ticket() {
 
   const filteredNames = useMemo(() => {
     const uniqueNames = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.name)));
-    return uniqueNames.filter(name => 
+    return uniqueNames.filter(name =>
       name.toLowerCase().includes(nameSearchQuery.toLowerCase())
     );
   }, [nameSearchQuery]);
 
   const filteredUnits = useMemo(() => {
     const uniqueUnits = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.unit)));
-    return uniqueUnits.filter(unit => 
+    return uniqueUnits.filter(unit =>
       unit.toLowerCase().includes(unitSearchQuery.toLowerCase())
     );
   }, [unitSearchQuery]);
@@ -141,7 +141,7 @@ export default function Ticket() {
   }, [selectedCategory, categories]);
 
   const filteredSubCategories = useMemo(() => {
-    return subcategories.filter(s => 
+    return subcategories.filter(s =>
       s.name.toLowerCase().includes(subCategorySearchQuery.toLowerCase())
     );
   }, [subcategories, subCategorySearchQuery]);
@@ -216,15 +216,15 @@ export default function Ticket() {
 
   return (
     <div className="bg-gray-100 min-h-screen">
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="p-4 lg:p-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
 
           {/* ================= LEFT PANEL ================= */}
-          <div className="space-y-6 lg:col-span-1">
+          <div className="space-y-1 lg:space-y-6 lg:col-span-1">
 
             {/* Informasi Sistem */}
             <div className="bg-white rounded-2xl shadow p-6 space-y-4">
-              <h3 className="text-lg font-bold ">
+              <h3 className="text-2xl lg:text-lg font-bold ">
                 RAPB IT SERVICE & SUPPORT CENTER
               </h3>
 
@@ -240,7 +240,7 @@ export default function Ticket() {
 
               <div className="space-y-3 text-sm">
                 <div className="relative">
-                  <div 
+                  <div
                     className="cursor-pointer border border-transparent hover:border-gray-200 rounded p-2 -mx-2 transition flex justify-between items-center"
                     onClick={() => setIsNameDropdownOpen(!isNameDropdownOpen)}
                     title="Klik untuk mengubah nama pelapor"
@@ -253,7 +253,7 @@ export default function Ticket() {
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  
+
                   {isNameDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg top-full left-0">
                       <div className="p-3 border-b border-gray-100">
@@ -277,8 +277,8 @@ export default function Ticket() {
                       <div className="max-h-48 overflow-y-auto custom-scrollbar">
                         {filteredNames.length > 0 ? (
                           filteredNames.map((name, idx) => (
-                            <div 
-                              key={idx} 
+                            <div
+                              key={idx}
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
                               onClick={() => handleSelectName(name)}
                             >
@@ -294,7 +294,7 @@ export default function Ticket() {
                 </div>
 
                 <div className="relative">
-                  <div 
+                  <div
                     className="cursor-pointer border border-transparent hover:border-gray-200 rounded p-2 -mx-2 transition flex justify-between items-center"
                     onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
                     title="Klik untuk mengubah unit"
@@ -307,7 +307,7 @@ export default function Ticket() {
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  
+
                   {isUnitDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg top-full left-0">
                       <div className="p-3 border-b border-gray-100">
@@ -331,8 +331,8 @@ export default function Ticket() {
                       <div className="max-h-48 overflow-y-auto custom-scrollbar">
                         {filteredUnits.length > 0 ? (
                           filteredUnits.map((unit, idx) => (
-                            <div 
-                              key={idx} 
+                            <div
+                              key={idx}
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
                               onClick={() => handleSelectUnit(unit)}
                             >
@@ -346,15 +346,15 @@ export default function Ticket() {
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="hidden lg:block">
                   <p className="text-gray-500">Hostname</p>
                   <p className="font-medium">{user.hostname}</p>
                 </div>
-                <div>
+                <div className="hidden lg:block">
                   <p className="text-gray-500">IP Address</p>
                   <p className="font-medium">{user.ip_address}</p>
                 </div>
-                <div>
+                <div className="hidden lg:block">
                   <p className="text-gray-500">Waktu</p>
                   <p className="font-medium">{formatDateTime(reportTimeStr)}</p>
                 </div>
@@ -362,7 +362,7 @@ export default function Ticket() {
             </div>
 
             {/* Riwayat Laporan */}
-            <div className="bg-white rounded-2xl shadow p-6 space-y-4">
+            <div className="hidden lg:block bg-white rounded-2xl shadow p-6 space-y-4">
               <h2 className="text-lg font-semibold text-gray-700">
                 Riwayat Laporan Terakhir
               </h2>
@@ -385,11 +385,11 @@ export default function Ticket() {
           </div>
 
           {/* ================= RIGHT PANEL ================= */}
-          <div className="bg-white rounded-2xl shadow p-8 lg:col-span-2 flex flex-col h-full">
+          <div className="bg-white rounded-2xl shadow p-5 lg:p-8 lg:col-span-2 flex flex-col h-full z-0">
 
             {ticketStatus === "form" && (
               <div className="flex-1 flex flex-col">
-                <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                <h1 className="text-lg lg:text-3xl font-bold text-gray-800 mb-2">
                   LAPOR GANGGUAN
                 </h1>
                 <p className="text-gray-500 mb-6">
@@ -419,7 +419,7 @@ export default function Ticket() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Jenis Gangguan
                     </label>
-                    <div 
+                    <div
                       className="w-full border rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
                       onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
                     >
@@ -454,8 +454,8 @@ export default function Ticket() {
                         <div className="max-h-48 overflow-y-auto custom-scrollbar">
                           {filteredSubCategories.length > 0 ? (
                             filteredSubCategories.map((s, idx) => (
-                              <div 
-                                key={idx} 
+                              <div
+                                key={idx}
                                 className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
                                 onClick={() => handleSelectSubCategory(s.name)}
                               >
@@ -494,14 +494,14 @@ export default function Ticket() {
                 </div>
 
                 {/* Tombol */}
-                <div className="flex justify-end gap-3 mt-auto">
-                  <button className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+                <div className="flex flex-col-reverse lg:flex-row justify-end gap-3 mt-auto pt-4">
+                  <button className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition font-bold lg:font-normal">
                     Batal
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={!selectedCategory || !selectedSubCategory}
-                    className={`px-6 py-3 rounded-lg text-white transition ${!selectedCategory || !selectedSubCategory ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                    className={`w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-white transition font-bold lg:font-normal ${!selectedCategory || !selectedSubCategory ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] lg:active:scale-100'}`}
                   >
                     Kirim Laporan
                   </button>
@@ -511,15 +511,29 @@ export default function Ticket() {
 
             {ticketStatus === "submitted" && ticketData && (
               <div className="flex-1 flex flex-col">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Laporan Berhasil Dikirim</h1>
-                    <p className="text-gray-500 mt-1">Tim IT akan segera menindaklanjuti laporan Anda.</p>
+                {/* Header Responsif */}
+                <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between mb-6 text-center lg:text-left">
+                  {/* Ikon Mobile */}
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center lg:hidden mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
-                  <div className="bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium">OPEN</div>
+                  <div>
+                    <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
+                      <span className="hidden lg:inline">Laporan Berhasil Dikirim</span>
+                      <span className="lg:hidden">Berhasil Dikirim!</span>
+                    </h1>
+                    <p className="text-sm lg:text-base text-gray-500 mt-1">
+                      <span className="hidden lg:inline">Tim IT akan segera menindaklanjuti laporan Anda.</span>
+                      <span className="lg:hidden">Tiket Anda <span className="font-bold text-gray-700">{ticketData.code}</span> sedang diproses.</span>
+                    </p>
+                  </div>
+                  <div className="hidden lg:block bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium">OPEN</div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Desktop Detail Grid */}
+                <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-3 text-sm">
                     <div>
                       <p className="text-gray-500">Nomor Tiket</p>
@@ -550,7 +564,24 @@ export default function Ticket() {
                   </div>
                 </div>
 
-                <div className="border-t pt-6 mb-6">
+                {/* Mobile Detail Box */}
+                <div className="lg:hidden bg-gray-50 p-4 rounded-xl text-left text-sm space-y-3 mb-5 border">
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                    <span className="text-gray-500">Status</span>
+                    <span className="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-semibold">OPEN</span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 block">Kategori</p>
+                    <p className="font-medium text-gray-800">{ticketData.categoryText}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 block">Estimasi</p>
+                    <p className="font-medium text-blue-600">{ticketData.slaText}</p>
+                  </div>
+                </div>
+
+                {/* Timeline Status - Tampil di Desktop & Mobile */}
+                <div className="border-t pt-6 mb-6 text-left">
                   <h2 className="text-lg font-semibold text-gray-700 mb-4">Timeline Status</h2>
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
@@ -577,12 +608,13 @@ export default function Ticket() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-auto">
-                  <button onClick={handleCloseTicket} className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+                <div className="flex flex-col-reverse lg:flex-row justify-end gap-3 mt-auto">
+                  <button onClick={handleCloseTicket} className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition text-sm font-bold lg:font-normal">
                     Tutup
                   </button>
-                  <button onClick={handleNewReport} className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                    Buat Laporan Baru
+                  <button onClick={handleNewReport} className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-blue-600 bg-blue-50 lg:text-white lg:bg-blue-600 hover:bg-blue-100 lg:hover:bg-blue-700 transition text-sm font-bold lg:font-normal active:scale-[0.98] lg:active:scale-100">
+                    <span className="hidden lg:inline">Buat Laporan Baru</span>
+                    <span className="lg:inline lg:hidden">Lapor Lagi</span>
                   </button>
                 </div>
               </div>
@@ -591,7 +623,7 @@ export default function Ticket() {
           </div>
 
           {/* ================= DIRECT MESSAGE PANEL ================= */}
-          <div className="bg-white rounded-2xl shadow p-6 flex flex-col h-[700px] lg:h-auto">
+          <div className="bg-white rounded-2xl shadow p-6 flex flex-col h-[500px] lg:h-[700px] lg:h-auto">
             <div className="border-b pb-4 mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Direct Message</h2>

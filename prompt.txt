@@ -1,191 +1,234 @@
-Saya memiliki halaman **form laporan gangguan IT** berbasis **HTML + TailwindCSS + Vanilla JavaScript**.
+Buatkan tampilan **Admin Dashboard untuk Sistem Ticketing IT Support** menggunakan **React JS (Vite)** dengan desain modern, responsif, modular, dan scalable.
 
-Saat ini terdapat **2 dropdown bertingkat**:
+Gunakan layout dashboard profesional dengan:
 
-* `categorySelect` → Kategori Gangguan
-* `subCategorySelect` → Jenis Gangguan
+* Sidebar navigation di kiri
+* Topbar di atas
+* Main content area
+* Dukungan Dark Mode dan Light Mode
+* UI bersih dan mudah digunakan oleh admin IT
 
-Struktur ini sudah benar, tetapi saya ingin **memperbaiki UX dan tampilan dropdown tanpa mengubah konsep 2 dropdown**.
-
-Jangan ubah struktur sistem secara besar. Hanya perbaiki **interaksi, visual, dan usability**.
-
----
-
-# Tujuan Perbaikan
-
-Tetap gunakan struktur:
-
-Kategori Gangguan
-→ Jenis Gangguan
-
-Tetapi buat pengalaman pengguna menjadi:
-
-* lebih cepat
-* lebih jelas
-* lebih modern
+Gunakan dummy data dan komponen reusable.
 
 ---
 
-# Perubahan yang harus dilakukan
+# Struktur Folder yang Wajib Digunakan
 
-## 1. Tambahkan Search pada Dropdown Jenis Gangguan
+Pisahkan halaman dan komponen agar modular dan mudah dikembangkan.
 
-Di atas `subCategorySelect`, tambahkan input pencarian:
+Gunakan struktur:
 
-```html
-<input 
-type="text" 
-id="subCategorySearch"
-placeholder="Cari jenis gangguan..."
-class="w-full border rounded-lg p-3 mb-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-/>
-```
+src/
 
-Fungsi search:
+* pages/ → hanya berisi halaman utama
+* components/ → berisi semua komponen reusable
+* components/layout/ → komponen layout global
+* components/ui/ → komponen UI umum
+* components/feature-specific/ → komponen khusus fitur
 
-* memfilter opsi di `subCategorySelect`
-* bekerja secara realtime
-* tidak mengubah data asli dropdown
-
-Contoh:
-
-User mengetik:
-
-```
-printer
-```
-
-Dropdown hanya menampilkan:
-
-```
-Printer tidak bisa cetak
-Printer macet
-Printer tidak terdeteksi
-```
+Jangan menaruh komponen reusable di dalam folder pages.
 
 ---
 
-## 2. Perbaiki Tampilan Dropdown
+# Struktur Menu Sidebar
 
-Gunakan style Tailwind yang lebih modern:
-
-```html
-class="w-full border border-gray-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-```
-
-Tambahkan juga:
-
-* hover effect
-* focus ring
-* padding lebih nyaman
+1. Dashboard
+2. Monitoring Laporan
+3. Kelola Perangkat
+4. Kelola User Admin
+5. Toggle Dark / Light Mode
 
 ---
 
-## 3. Animasi Saat Jenis Gangguan Muncul
+# 1. Halaman Dashboard
 
-Saat kategori dipilih dan subcategory muncul, tambahkan animasi:
+## Statistik Laporan
 
-```
-transition
-duration-200
-ease-in-out
-```
+Stat cards:
 
-Efek:
+* Total laporan
+* Laporan hari ini
+* Laporan selesai
+* Laporan diproses
+* Laporan terbuka
 
-* dropdown muncul lebih halus
-* UI terasa lebih modern
+Filter:
 
----
+* Rentang waktu
+* Status
+* Kategori
+* Unit / lokasi (opsional)
 
-## 4. Reset Search Saat Kategori Berubah
-
-Jika user mengganti kategori:
-
-* kosongkan search input
-* reset dropdown jenis gangguan
+Tambahkan grafik distribusi laporan.
 
 ---
 
-## 5. Highlight SLA dengan Lebih Jelas
+## Riwayat Laporan (Selain Hari Ini)
 
-Jika jenis gangguan dipilih dan memiliki `sla_minutes`, tampilkan:
+Tabel riwayat laporan lampau.
 
-```
-Estimasi respon: 30 menit
-```
+Kolom:
 
-Dengan style:
-
-```
-bg-blue-50
-text-blue-700
-font-medium
-```
-
-Jika belum memilih jenis gangguan:
-
-```
-Estimasi respon: -
-```
+* ID laporan
+* Jenis gangguan
+* Pelapor / unit
+* Status
+* Prioritas
+* Tanggal laporan
+* Tanggal selesai
 
 ---
 
-## 6. Tambahkan Placeholder yang Lebih Ramah User
+# 2. Halaman Monitoring Laporan Gangguan
 
-Kategori:
+Command center real-time.
 
-```
--- Pilih kategori gangguan --
-```
+## Statistik Hari Ini
 
-Jenis:
-
-```
--- Pilih jenis gangguan --
-```
-
-Search:
-
-```
-Cari jenis gangguan...
-```
+* Laporan baru
+* Diproses
+* Selesai
+* Total hari ini
 
 ---
 
-# Behaviour yang Diharapkan
+## View Switch: Daftar ↔ Denah
 
-Alur user:
+Tambahkan komponen ViewSwitcher.
 
-1. Pilih kategori gangguan
-2. Dropdown jenis gangguan muncul
-3. User bisa:
+Hanya satu tampilan aktif:
 
-   * scroll
-   * atau search
-4. Pilih jenis gangguan
-5. SLA otomatis diperbarui
+* List View
+* Denah View
 
 ---
 
-# Batasan
+## List View — Laporan Hari Ini
 
-Jangan mengubah:
+Tabel real-time:
 
-* struktur JSON
-* struktur form
-* logic submit laporan
-* fungsi ticket
+* Waktu laporan
+* Unit / lokasi
+* Jenis gangguan
+* Status
+* Prioritas
+* Teknisi
 
-Hanya fokus memperbaiki:
+---
 
-* UX dropdown
-* search filtering
-* visual styling
-* interaksi user
+## Denah View — Lokasi Laporan
 
-Gunakan **JavaScript vanilla tanpa library tambahan**.
+Denah interaktif:
 
-Refactor the existing code instead of rewriting the entire page.
-Only modify the category and subcategory selection system.
-Keep the rest of the page unchanged.
+* Marker koordinat laporan
+* Warna berdasarkan status
+* Tooltip detail
+* Zoom / pan opsional
+
+---
+
+# 3. Halaman Kelola Perangkat
+
+## Statistik Perangkat
+
+* Total perangkat
+* Jumlah per jenis
+* Status perangkat
+
+---
+
+## View Switch: Daftar ↔ Denah
+
+Gunakan komponen yang sama dengan monitoring.
+
+---
+
+## List View — Daftar Perangkat
+
+Kolom:
+
+* Device ID
+* Nama pengguna
+* Unit
+* Jenis perangkat
+* Hostname
+* IP Address
+* Status
+* Lokasi
+
+Filter:
+
+* Kategori perangkat
+* Nama unit
+* Nama pengguna
+
+---
+
+## Denah View — Penempatan Perangkat
+
+Fitur:
+
+* Menampilkan posisi perangkat
+* Tambah perangkat dengan klik lokasi
+* Form input perangkat
+* Simpan koordinat
+
+---
+
+# 4. Halaman Kelola User Admin
+
+Tabel akun admin:
+
+* Nama
+* Username / email
+* Role
+* Status akun
+* Aksi
+
+---
+
+# Komponen Reusable yang Harus Dibuat
+
+Layout:
+
+* Sidebar
+* Topbar
+* DashboardLayout
+
+UI:
+
+* StatCard
+* Table
+* FilterBar
+* Modal
+* Tooltip / Popover
+* StatusBadge
+* Button
+
+Feature:
+
+* ViewSwitcher
+* FloorPlanCanvas
+
+---
+
+# Dark Mode dan Light Mode
+
+* Toggle global
+* Berlaku ke seluruh aplikasi
+* Gunakan class-based theme
+
+---
+
+# Persyaratan Teknis
+
+Gunakan:
+
+* React JS (Vite)
+* React Router
+* TailwindCSS
+* Struktur modular
+* Dummy data
+* Responsif untuk desktop dan tablet
+
+Fokus pada frontend saja tanpa backend.
