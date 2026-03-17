@@ -1,10 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import StatCard from '../../components/ui/StatCard';
 import Table from '../../components/ui/Table';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   const dummyHistory = [
     { id: "TCK-20240510-001", category: "Hardware", type: "Printer Rusak/Error", user_name: "Budi", unit: "Poli Anak", status: "Selesai", priority: "Rendah", date: "10 Mei 2024 09:00", resolve: "10 Mei 2024 10:15" },
     { id: "TCK-20240509-021", category: "Software", type: "SIMRS Tidak Bisa Login", user_name: "Siti", unit: "IGD", status: "Selesai", priority: "Tinggi", date: "09 Mei 2024 14:10", resolve: "09 Mei 2024 14:20" },
@@ -185,7 +188,11 @@ export default function Dashboard() {
         </div>
         <Table headers={["ID Laporan", "Kategori", "Jenis Gangguan", "Pelapor", "Unit", "Status", "Prioritas", "Tgl Laporan", "Tgl Selesai"]}>
           {dummyHistory.map((item, i) => (
-            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            <tr 
+              key={i} 
+              className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+              onClick={() => navigate(`/admin/ticket/${item.id}`)}
+            >
               <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">{item.id}</td>
               <td className="py-4 px-6">{item.category}</td>
               <td className="py-4 px-6">{item.type}</td>

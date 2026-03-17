@@ -7,6 +7,7 @@ import Dashboard from './pages/admin/Dashboard'
 import Monitoring from './pages/admin/Monitoring'
 import Devices from './pages/admin/Devices'
 import Users from './pages/admin/Users'
+import TicketDetail from './pages/admin/TicketDetail'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="monitoring" element={<Monitoring />} />
           <Route path="devices" element={<Devices />} />
           <Route path="users" element={<Users />} />
+          <Route path="ticket/:id" element={<TicketDetail />} />
         </Route>
       </Routes>
     </Router>
