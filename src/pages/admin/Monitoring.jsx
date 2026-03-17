@@ -43,7 +43,7 @@ export default function Monitoring() {
               <option>Diproses</option>
               <option>Selesai</option>
             </select>
-            
+
             {/* Filter Unit */}
             <select className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none">
               <option>Semua Unit</option>
@@ -52,28 +52,20 @@ export default function Monitoring() {
               <option>Poli Anak</option>
             </select>
 
-            {/* Filter Kategori */}
-            <select className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none">
-              <option>Semua Kategori</option>
-              <option>Hardware</option>
-              <option>Software</option>
-              <option>Jaringan</option>
-            </select>
-
             {/* Search Bar */}
             <div className="relative w-full sm:w-auto">
-              <input 
-                type="text" 
-                placeholder="Cari pelapor / ID..." 
-                className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" 
+              <input
+                type="text"
+                placeholder="Cari pelapor / ID..."
+                className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
               />
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            
+
             {/* Tambah Laporan Button */}
-            <button 
+            <button
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition w-full sm:w-auto flex items-center justify-center gap-2 shadow-sm"
             >
@@ -88,8 +80,8 @@ export default function Monitoring() {
         {view === 'list' ? (
           <Table headers={["Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]}>
             {dummyToday.map((item, i) => (
-              <tr 
-                key={i} 
+              <tr
+                key={i}
                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
                 onClick={() => navigate(`/admin/ticket/TCK-${item.time.replace(':', '')}`)}
               >
@@ -104,27 +96,27 @@ export default function Monitoring() {
           </Table>
         ) : (
           <div className="p-6 h-[500px] flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 relative">
-             <div className="absolute top-1/4 left-1/4 group cursor-pointer">
-                <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse relative z-10 shadow-lg"></div>
-                <div className="hidden group-hover:block absolute top-6 left-0 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-xl text-xs w-48 z-20 border border-gray-100 dark:border-gray-600">
-                   <p className="font-bold mb-1 text-gray-800 dark:text-gray-100">Poli Gigi</p>
-                   <p className="text-gray-500 dark:text-gray-300">Printer Macet</p>
-                   <p className="text-red-500 font-semibold mt-1">Open</p>
-                </div>
-             </div>
-             
-             <div className="absolute top-1/2 left-2/3 group cursor-pointer">
-                <div className="w-4 h-4 rounded-full bg-yellow-400 relative z-10 shadow-lg"></div>
-                <div className="hidden group-hover:block absolute top-6 -left-20 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-xl text-xs w-48 z-20 border border-gray-100 dark:border-gray-600">
-                   <p className="font-bold mb-1 text-gray-800 dark:text-gray-100">Rekam Medis</p>
-                   <p className="text-gray-500 dark:text-gray-300">Internet Mati</p>
-                   <p className="text-yellow-600 font-semibold mt-1">Diproses</p>
-                </div>
-             </div>
+            <div className="absolute top-1/4 left-1/4 group cursor-pointer">
+              <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse relative z-10 shadow-lg"></div>
+              <div className="hidden group-hover:block absolute top-6 left-0 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-xl text-xs w-48 z-20 border border-gray-100 dark:border-gray-600">
+                <p className="font-bold mb-1 text-gray-800 dark:text-gray-100">Poli Gigi</p>
+                <p className="text-gray-500 dark:text-gray-300">Printer Macet</p>
+                <p className="text-red-500 font-semibold mt-1">Open</p>
+              </div>
+            </div>
 
-             <div className="text-gray-400 dark:text-gray-500 font-medium text-xl opacity-50">
-                [ Peta Denah interaktif akan dirender di sini ]
-             </div>
+            <div className="absolute top-1/2 left-2/3 group cursor-pointer">
+              <div className="w-4 h-4 rounded-full bg-yellow-400 relative z-10 shadow-lg"></div>
+              <div className="hidden group-hover:block absolute top-6 -left-20 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-xl text-xs w-48 z-20 border border-gray-100 dark:border-gray-600">
+                <p className="font-bold mb-1 text-gray-800 dark:text-gray-100">Rekam Medis</p>
+                <p className="text-gray-500 dark:text-gray-300">Internet Mati</p>
+                <p className="text-yellow-600 font-semibold mt-1">Diproses</p>
+              </div>
+            </div>
+
+            <div className="text-gray-400 dark:text-gray-500 font-medium text-xl opacity-50">
+              [ Peta Denah interaktif akan dirender di sini ]
+            </div>
           </div>
         )}
       </div>
@@ -135,7 +127,7 @@ export default function Monitoring() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Tambah Laporan Manual</h2>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
               >
@@ -144,22 +136,22 @@ export default function Monitoring() {
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nama Pelapor</label>
-                <input 
-                  type="text" 
-                  placeholder="Masukkan nama pelapor..." 
-                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="text"
+                  placeholder="Masukkan nama pelapor..."
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nama Unit</label>
-                <input 
-                  type="text" 
-                  placeholder="Contoh: IGD, Laboratorium..." 
-                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="text"
+                  placeholder="Contoh: IGD, Laboratorium..."
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -174,22 +166,22 @@ export default function Monitoring() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Jenis Gangguan</label>
-                <input 
-                  type="text" 
-                  placeholder="Contoh: Printer Rusak, PC Mati..." 
-                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
+                <input
+                  type="text"
+                  placeholder="Contoh: Printer Rusak, PC Mati..."
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm"
               >

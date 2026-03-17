@@ -1,14 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import StatCard from '../../components/ui/StatCard';
 import ViewSwitcher from '../../components/feature-specific/ViewSwitcher';
 import Table from '../../components/ui/Table';
 import StatusBadge from '../../components/ui/StatusBadge';
+
+const MOCK_EMPLOYEES = [
+  "Budi Santoso",
+  "Siti Aminah",
+  "Andi Wijaya",
+  "Rina Kusuma",
+  "Eko Rahmad",
+  "Dr. Tirta",
+  "Dewi Lestari",
+];
 
 export default function Devices() {
   const [view, setView] = useState('list');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [editForm, setEditForm] = useState({});
+
+  // --- State untuk dropdown Nama Pengguna di modal Tambah ---
+  const [addForm, setAddForm] = useState({ user: '' });
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+
+  const filteredUsers = useMemo(() =>
+    MOCK_EMPLOYEES.filter(name =>
+      name.toLowerCase().includes(userSearchQuery.toLowerCase())
+    ),
+  [userSearchQuery]);
+
+  const handleSelectUser = (name) => {
+    setAddForm(prev => ({ ...prev, user: name }));
+    setIsUserDropdownOpen(false);
+    setUserSearchQuery('');
+  };
 
   const [devices, setDevices] = useState([
     { id: "PC-POLI-PD-01", user: "Budi Santoso", unit: "Poli Penyakit Dalam", type: "PC Desktop", hostname: "PC-POLI-PD-01", ip: "192.168.10.45", mac: "AA:BB:CC:01:02:03", remote: "-", os: "Windows 10", serial: "SN-001", brand: "Lenovo", model: "ThinkCentre M720q", coordX: 120, coordY: 80, embedded: "No", status: "Aktif", loc: "Gedung A, Lt 2" },
@@ -116,6 +143,62 @@ export default function Devices() {
             </div>
             
             <div className="p-6 overflow-y-auto space-y-4 font-medium text-sm">
+              {/* Field Nama Pengguna dengan searchable dropdown */}
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 mb-1">Nama Pengguna</label>
+                <div className="relative">
+                  <div
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                  >
+                    <span className={addForm.user ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}>
+                      {addForm.user || '-- Pilih Nama Pengguna --'}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 text-gray-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+
+                  {isUserDropdownOpen && (
+                    <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                      <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+                        <input
+                          type="text"
+                          placeholder="Cari nama pegawai..."
+                          className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                          value={userSearchQuery}
+                          onChange={(e) => setUserSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (filteredUsers.length > 0) {
+                                handleSelectUser(filteredUsers[0]);
+                              }
+                            }
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredUsers.length > 0 ? (
+                          filteredUsers.map((name, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-50 dark:border-gray-800 last:border-0"
+                              onClick={() => handleSelectUser(name)}
+                            >
+                              <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{name}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-sm text-gray-500 text-center">Nama tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 dark:text-gray-300 mb-1">Hostname</label>
