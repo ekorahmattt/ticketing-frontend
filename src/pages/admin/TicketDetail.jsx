@@ -26,6 +26,13 @@ export default function TicketDetail() {
   const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
   const [unitSearchQuery, setUnitSearchQuery] = useState("");
 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const handleDeleteTicket = () => {
+    setIsDeleteModalOpen(false);
+    navigate(-1);
+  };
+
   const filteredNames = useMemo(() => {
     const uniqueNames = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.name)));
     return uniqueNames.filter(name =>
@@ -273,7 +280,17 @@ export default function TicketDetail() {
                     <textarea rows="2" className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Catatan internal tambahan..."></textarea>
                   </div>
 
-                  <div className="flex justify-end pt-2">
+                  <div className="flex justify-between items-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      className="flex items-center gap-2 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-bold py-2.5 px-5 rounded-lg transition border border-red-200 dark:border-red-800"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Hapus Ticket
+                    </button>
                     <button type="button" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-sm">
                       Update Ticket
                     </button>
@@ -318,6 +335,58 @@ export default function TicketDetail() {
         </div>
 
       </div>
+
+      {/* Modal Konfirmasi Hapus Ticket */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 flex items-center gap-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Hapus Ticket?</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Anda akan menghapus ticket <span className="font-bold text-gray-900 dark:text-gray-100">{id}</span> secara permanen.
+                Semua data laporan, riwayat, dan percakapan terkait ticket ini akan ikut terhapus.
+              </p>
+              <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                  ⚠️ Data yang sudah dihapus tidak dapat dipulihkan kembali.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteTicket}
+                className="flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Ya, Hapus Ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

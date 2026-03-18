@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // --- MOCK DATA SEBAGAI PENGGANTI FETCH API SEMENTARA ---
 const MOCK_USER = {
@@ -129,6 +130,40 @@ export default function Ticket() {
 
   const [ticketStatus, setTicketStatus] = useState("form"); // "form" | "submitted"
   const [ticketData, setTicketData] = useState(null);
+
+  // --- State untuk modal Update Ticket ---
+  const navigate = useNavigate();
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+  const [adminLoginForm, setAdminLoginForm] = useState({ username: '', password: '' });
+  const [adminLoginError, setAdminLoginError] = useState('');
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+
+  const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (!adminLoginForm.username.trim() || !adminLoginForm.password.trim()) {
+      setAdminLoginError('Username dan password wajib diisi.');
+      return;
+    }
+    setAdminLoginLoading(true);
+    setTimeout(() => {
+      if (
+        adminLoginForm.username === ADMIN_CREDENTIALS.username &&
+        adminLoginForm.password === ADMIN_CREDENTIALS.password
+      ) {
+        setAdminLoginLoading(false);
+        setIsAdminLoginModalOpen(false);
+        navigate(`/admin/ticket/${ticketData?.code || 'TCK-001'}`);
+      } else {
+        setAdminLoginError('Username atau password salah.');
+        setAdminLoginLoading(false);
+      }
+    }, 800);
+  };
 
   // useEffect(() => {
   //   Fetch data sebenarnya ditaruh disini nanti
@@ -608,14 +643,27 @@ export default function Ticket() {
                   </div>
                 </div>
 
-                <div className="flex flex-col-reverse lg:flex-row justify-end gap-3 mt-auto">
-                  <button onClick={handleCloseTicket} className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition text-sm font-bold lg:font-normal">
-                    Tutup
+                <div className="flex flex-col-reverse lg:flex-row justify-between gap-3 mt-auto">
+                  {/* Kiri: Update Ticket */}
+                  <button
+                    onClick={() => setIsActionModalOpen(true)}
+                    className="w-full lg:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl lg:rounded-lg bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition text-sm font-bold lg:font-medium"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Update Ticket
                   </button>
-                  <button onClick={handleNewReport} className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-blue-600 bg-blue-50 lg:text-white lg:bg-blue-600 hover:bg-blue-100 lg:hover:bg-blue-700 transition text-sm font-bold lg:font-normal active:scale-[0.98] lg:active:scale-100">
-                    <span className="hidden lg:inline">Buat Laporan Baru</span>
-                    <span className="lg:inline lg:hidden">Lapor Lagi</span>
-                  </button>
+                  {/* Kanan: Tutup & Buat Baru */}
+                  <div className="flex flex-col-reverse lg:flex-row gap-3">
+                    <button onClick={handleCloseTicket} className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition text-sm font-bold lg:font-normal">
+                      Tutup
+                    </button>
+                    <button onClick={handleNewReport} className="w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-blue-600 bg-blue-50 lg:text-white lg:bg-blue-600 hover:bg-blue-100 lg:hover:bg-blue-700 transition text-sm font-bold lg:font-normal active:scale-[0.98] lg:active:scale-100">
+                      <span className="hidden lg:inline">Buat Laporan Baru</span>
+                      <span className="lg:hidden">Lapor Lagi</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -653,6 +701,218 @@ export default function Ticket() {
 
         </div>
       </div>
+
+      {/* ============ MODAL: PILIHAN AKSI TICKET ============ */}
+      {isActionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800">Pilih Tindakan</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Ticket: <span className="font-semibold text-gray-700">{ticketData?.code}</span></p>
+            </div>
+            <div className="p-5 space-y-3">
+              {/* Update Ticket (Admin) */}
+              <button
+                onClick={() => { setIsActionModalOpen(false); setIsAdminLoginModalOpen(true); setAdminLoginError(''); setAdminLoginForm({ username: '', password: '' }); }}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-100 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 transition text-left group"
+              >
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-800 text-sm">Update Ticket (Admin)</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Login sebagai admin untuk mengupdate status dan detail ticket ini.</p>
+                </div>
+              </button>
+
+              {/* Batalkan Ticket */}
+              <button
+                onClick={() => { setIsActionModalOpen(false); setIsCancelConfirmOpen(true); }}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-red-100 bg-red-50 hover:border-red-300 hover:bg-red-100 transition text-left"
+              >
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-red-600 text-sm">Batalkan Ticket</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Batalkan laporan ini jika masalah sudah teratasi atau laporan dibuat tidak sengaja.</p>
+                </div>
+              </button>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={() => setIsActionModalOpen(false)}
+                className="w-full text-sm text-gray-500 hover:text-gray-700 font-medium transition"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ MODAL: KONFIRMASI BATALKAN TICKET ============ */}
+      {isCancelConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-5 flex items-center gap-4 border-b border-gray-100">
+              <div className="shrink-0 w-11 h-11 bg-red-100 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-800">Batalkan Tiket?</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-600">Tiket <span className="font-bold text-gray-800">{ticketData?.code}</span> akan dibatalkan. Pastikan Anda yakin sebelum melanjutkan.</p>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                onClick={() => setIsCancelConfirmOpen(false)}
+                className="px-4 py-2 text-sm text-gray-600 font-medium hover:bg-gray-200 rounded-lg transition"
+              >
+                Kembali
+              </button>
+              <button
+                onClick={() => { setIsCancelConfirmOpen(false); handleNewReport(); }}
+                className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition"
+              >
+                Ya, Batalkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ MODAL: LOGIN ADMIN ============ */}
+      {isAdminLoginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-800">Login Admin</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Masuk untuk mengakses detail ticket</p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAdminLogin} className="px-6 py-5 space-y-4">
+              {/* Username */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Username</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Username admin"
+                    value={adminLoginForm.username}
+                    onChange={(e) => { setAdminLoginForm(p => ({...p, username: e.target.value})); setAdminLoginError(''); }}
+                    className="w-full border border-gray-200 bg-gray-50 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">Password</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </span>
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    placeholder="Password admin"
+                    value={adminLoginForm.password}
+                    onChange={(e) => { setAdminLoginForm(p => ({...p, password: e.target.value})); setAdminLoginError(''); }}
+                    className="w-full border border-gray-200 bg-gray-50 rounded-lg pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    tabIndex={-1}
+                  >
+                    {showAdminPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error */}
+              {adminLoginError && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p className="text-xs text-red-600 font-medium">{adminLoginError}</p>
+                </div>
+              )}
+
+              {/* Hint kredensial */}
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xs text-gray-500">Demo: <span className="font-mono font-bold text-gray-700">admin</span> / <span className="font-mono font-bold text-gray-700">admin123</span></p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setIsAdminLoginModalOpen(false); setAdminLoginError(''); }}
+                  className="flex-1 py-2.5 text-sm text-gray-600 font-medium border border-gray-200 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminLoginLoading}
+                  className="flex-1 py-2.5 text-sm text-white font-bold bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {adminLoginLoading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Memverifikasi...
+                    </>
+                  ) : 'Masuk'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

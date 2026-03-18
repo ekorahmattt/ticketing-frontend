@@ -11,9 +11,9 @@ export default function Monitoring() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const dummyToday = [
-    { time: "09:15", unit: "Poli Gigi", type: "Printer Macet", status: "Open", prioritas: "Sedang", teknisi: "-" },
-    { time: "10:30", unit: "Rekam Medis", type: "Internet Mati", status: "Diproses", prioritas: "Tinggi", teknisi: "Eko Rahmad" },
-    { time: "11:00", unit: "Laboratorium", type: "SIMRS Lemot", status: "Selesai", prioritas: "Tinggi", teknisi: "Eko Rahmad" },
+    { id: "TCK-20260318-001", time: "09:15", unit: "Poli Gigi", type: "Printer Macet", status: "Open", prioritas: "Sedang", teknisi: "-" },
+    { id: "TCK-20260318-002", time: "10:30", unit: "Rekam Medis", type: "Internet Mati", status: "Diproses", prioritas: "Tinggi", teknisi: "Eko Rahmad" },
+    { id: "TCK-20260318-003", time: "11:00", unit: "Laboratorium", type: "SIMRS Lemot", status: "Selesai", prioritas: "Tinggi", teknisi: "Eko Rahmad" },
   ];
 
   return (
@@ -78,15 +78,16 @@ export default function Monitoring() {
         </div>
 
         {view === 'list' ? (
-          <Table headers={["Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]}>
+          <Table headers={["ID Laporan", "Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]}>
             {dummyToday.map((item, i) => (
               <tr
                 key={i}
                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                onClick={() => navigate(`/admin/ticket/TCK-${item.time.replace(':', '')}`)}
+                onClick={() => navigate(`/admin/ticket/${item.id}`)}
               >
+                <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">{item.id}</td>
                 <td className="py-4 px-6">{item.time}</td>
-                <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">{item.unit}</td>
+                <td className="py-4 px-6">{item.unit}</td>
                 <td className="py-4 px-6">{item.type}</td>
                 <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
                 <td className="py-4 px-6">{item.prioritas}</td>
