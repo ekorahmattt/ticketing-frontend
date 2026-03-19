@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
-export default function Sidebar({ isDarkMode, toggleTheme }) {
+export default function Sidebar({ isDarkMode, toggleTheme, onLogout }) {
   const menus = [
     { name: "Dashboard", path: "/admin", exact: true },
     { name: "Monitoring Laporan", path: "/admin/monitoring" },
@@ -34,7 +34,8 @@ export default function Sidebar({ isDarkMode, toggleTheme }) {
         </ul>
       </div>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        {/* Dark/Light mode toggle */}
         <button 
           onClick={toggleTheme}
           className="w-full flex items-center justify-between px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
@@ -45,6 +46,17 @@ export default function Sidebar({ isDarkMode, toggleTheme }) {
           ) : (
              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
           )}
+        </button>
+
+        {/* Tombol logout di sidebar */}
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Keluar
         </button>
       </div>
     </div>

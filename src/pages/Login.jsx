@@ -1,43 +1,66 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-// Kredensial demo
-const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'admin123',
-};
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/ticketing-backend/index.php';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
+
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Redirect jika sudah login
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/admin';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.username.trim() || !form.password.trim()) {
       setError('Username dan password wajib diisi.');
       return;
     }
     setLoading(true);
-    // Simulasi proses autentikasi
-    setTimeout(() => {
-      if (
-        form.username === ADMIN_CREDENTIALS.username &&
-        form.password === ADMIN_CREDENTIALS.password
-      ) {
-        navigate('/admin');
+    setError('');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: form.username.trim(),
+          password: form.password,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (res.ok && json.status === 'success') {
+        // Simpan data user via AuthContext (ke localStorage)
+        login(json.data);
+        const from = location.state?.from?.pathname || '/admin';
+        navigate(from, { replace: true });
       } else {
-        setError('Username atau password salah. Silakan coba lagi.');
-        setLoading(false);
+        setError(json.message || 'Username atau password salah. Silakan coba lagi.');
       }
-    }, 900);
+    } catch (err) {
+      setError('Tidak dapat terhubung ke server. Pastikan XAMPP berjalan dan coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -98,7 +121,8 @@ export default function Login() {
                   placeholder="Masukkan username"
                   value={form.username}
                   onChange={handleChange}
-                  className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/60 transition"
+                  disabled={loading}
+                  className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/60 transition disabled:opacity-50"
                 />
               </div>
             </div>
@@ -122,7 +146,8 @@ export default function Login() {
                   placeholder="Masukkan password"
                   value={form.password}
                   onChange={handleChange}
-                  className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-11 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/60 transition"
+                  disabled={loading}
+                  className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-11 pr-11 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/60 transition disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -157,6 +182,7 @@ export default function Login() {
             {/* Submit */}
             <button
               type="submit"
+              id="btn-login"
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 mt-2"
             >
@@ -178,22 +204,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {/* Demo hint */}
-          <div className="mt-6 pt-5 border-t border-white/10">
-            <p className="text-xs text-white/30 text-center mb-2 font-medium uppercase tracking-widest">Demo Credentials</p>
-            <div className="flex justify-center gap-6">
-              <div className="text-center">
-                <p className="text-[11px] text-white/30">Username</p>
-                <p className="text-xs font-mono font-bold text-white/60">admin</p>
-              </div>
-              <div className="w-px bg-white/10" />
-              <div className="text-center">
-                <p className="text-[11px] text-white/30">Password</p>
-                <p className="text-xs font-mono font-bold text-white/60">admin123</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
