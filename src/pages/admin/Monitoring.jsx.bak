@@ -1,54 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../../components/ui/StatCard';
 import ViewSwitcher from '../../components/feature-specific/ViewSwitcher';
 import Table from '../../components/ui/Table';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { useAuth } from '../../context/AuthContext';
-import { API_BASE, apiHeaders } from '../../utils/api';
 
 export default function Monitoring() {
   const [view, setView] = useState('list');
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user } = useAuth();
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTickets = async () => {
-    try {
-      setIsLoading(true);
-      const res = await fetch(`${API_BASE}/api/tickets`, {
-        headers: apiHeaders(user)
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        setTickets(data.data || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch tickets:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTickets();
-  }, [user]);
-
-  // Statistik & Filter Hari Ini
-  const todayStr = new Date().toISOString().split('T')[0];
-  const ticketsToday = tickets.filter(t => t.created_at && t.created_at.startsWith(todayStr));
-  
-  const totalHariIni = ticketsToday.length;
-  const laporanBaru = ticketsToday.filter(t => t.status === 'baru' || t.status === 'open').length;
-  const diproses = ticketsToday.filter(t => t.status === 'proses' || t.status === 'process').length;
-  const selesai = ticketsToday.filter(t => t.status === 'selesai' || t.status === 'done').length;
-
-  const getFormatTime = (datetimeStr) => {
-    if (!datetimeStr) return '-';
-    return datetimeStr.split(' ')[1]?.substring(0, 5) || '-';
-  };
+  const dummyToday = [
+    { id: "TCK-20260318-001", time: "09:15", unit: "Poli Gigi", type: "Printer Macet", status: "Open", prioritas: "Sedang", teknisi: "-" },
+    { id: "TCK-20260318-002", time: "10:30", unit: "Rekam Medis", type: "Internet Mati", status: "Diproses", prioritas: "Tinggi", teknisi: "Eko Rahmad" },
+    { id: "TCK-20260318-003", time: "11:00", unit: "Laboratorium", type: "SIMRS Lemot", status: "Selesai", prioritas: "Tinggi", teknisi: "Eko Rahmad" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -57,10 +23,10 @@ export default function Monitoring() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Hari Ini" value={totalHariIni.toString()} colorClass="text-blue-600 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-400" icon={<span className="font-bold text-xl">{totalHariIni}</span>} />
-        <StatCard title="Laporan Baru" value={laporanBaru.toString()} colorClass="text-red-600 bg-red-100 dark:bg-red-900/50 dark:text-red-400" icon={<span className="font-bold text-xl">{laporanBaru}</span>} />
-        <StatCard title="Diproses" value={diproses.toString()} colorClass="text-yellow-600 bg-yellow-100 dark:bg-yellow-900/50 dark:text-yellow-400" icon={<span className="font-bold text-xl">{diproses}</span>} />
-        <StatCard title="Selesai" value={selesai.toString()} colorClass="text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400" icon={<span className="font-bold text-xl">{selesai}</span>} />
+        <StatCard title="Total Hari Ini" value="12" colorClass="text-blue-600 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-400" icon={<span className="font-bold text-xl">12</span>} />
+        <StatCard title="Laporan Baru" value="4" colorClass="text-red-600 bg-red-100 dark:bg-red-900/50 dark:text-red-400" icon={<span className="font-bold text-xl">4</span>} />
+        <StatCard title="Diproses" value="3" colorClass="text-yellow-600 bg-yellow-100 dark:bg-yellow-900/50 dark:text-yellow-400" icon={<span className="font-bold text-xl">3</span>} />
+        <StatCard title="Selesai" value="5" colorClass="text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400" icon={<span className="font-bold text-xl">5</span>} />
       </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 transition-colors duration-200 overflow-hidden">
@@ -112,29 +78,23 @@ export default function Monitoring() {
         </div>
 
         {view === 'list' ? (
-          isLoading ? (
-            <div className="p-6 text-center text-gray-500">Memuat data...</div>
-          ) : tickets.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">Belum ada laporan.</div>
-          ) : (
-            <Table headers={["ID Laporan", "Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]} >
-              {tickets.map((item, i) => (
-                <tr
-                  key={i}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                  onClick={() => navigate(`/admin/ticket/${item.id}`)}
-                >
-                  <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">TCK-{item.id}</td>
-                  <td className="py-4 px-6">{getFormatTime(item.created_at)}</td>
-                  <td className="py-4 px-6">{item.reporter_unit || '-'}</td>
-                  <td className="py-4 px-6">{item.subcategory || item.category || '-'}</td>
-                  <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
-                  <td className="py-4 px-6">Normal</td>
-                  <td className="py-4 px-6">{item.teknisi || '-'}</td>
-                </tr>
-              ))}
-            </Table>
-          )
+          <Table headers={["ID Laporan", "Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]}>
+            {dummyToday.map((item, i) => (
+              <tr
+                key={i}
+                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                onClick={() => navigate(`/admin/ticket/${item.id}`)}
+              >
+                <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">{item.id}</td>
+                <td className="py-4 px-6">{item.time}</td>
+                <td className="py-4 px-6">{item.unit}</td>
+                <td className="py-4 px-6">{item.type}</td>
+                <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
+                <td className="py-4 px-6">{item.prioritas}</td>
+                <td className="py-4 px-6">{item.teknisi}</td>
+              </tr>
+            ))}
+          </Table>
         ) : (
           <div className="p-6 h-[500px] flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 relative">
             <div className="absolute top-1/4 left-1/4 group cursor-pointer">

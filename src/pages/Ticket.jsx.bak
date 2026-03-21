@@ -1,18 +1,56 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { API_BASE } from '../utils/api';
-
-const DEFAULT_USER = {
-  name: "",
-  unit: "",
-  hostname: "-",
-  ip_address: "-",
-  detection_mode: "Web/Public",
-  device_brand: "",
-  device_model: "",
-  device_id: null
+// --- MOCK DATA SEBAGAI PENGGANTI FETCH API SEMENTARA ---
+const MOCK_USER = {
+  name: "Budi Santoso",
+  unit: "Poliklinik Penyakit Dalam",
+  hostname: "PC-POLI-PD-01",
+  ip_address: "192.168.10.45",
+  detection_mode: "LAN",
+  device_brand: "Lenovo",
+  device_model: "ThinkCentre M720q",
 };
+
+const MOCK_EMPLOYEES = [
+  { name: "Budi Santoso", unit: "Poliklinik Penyakit Dalam" },
+  { name: "Siti Aminah", unit: "Instalasi Gawat Darurat" },
+  { name: "Andi Wijaya", unit: "Laboratorium Terpadu" },
+  { name: "Rina Kusuma", unit: "Pendaftaran" },
+  { name: "Eko Rahmad", unit: "IT RS" },
+  { name: "Dr. Tirta", unit: "Poli Anak" },
+  { name: "Dewi Lestari", unit: "Farmasi" },
+];
+
+const MOCK_HISTORY = [
+  { category: "Hardware", subcategory: "Printer Error", status: "Closed", status_color: "green", created_at: "2024-05-01 10:00" },
+  { category: "Software & Aplikasi", subcategory: "SIMRS Tidak Bisa Login", status: "Closed", status_color: "green", created_at: "2024-05-05 14:30" }
+];
+
+const MOCK_CATEGORIES = [
+  {
+    category_name: "Hardware",
+    subcategories: [
+      { name: "Printer Rusak/Error", sla_minutes: 60 },
+      { name: "Komputer Mati", sla_minutes: 120 },
+      { name: "Scanner Rusak", sla_minutes: 60 }
+    ]
+  },
+  {
+    category_name: "Software & Aplikasi",
+    subcategories: [
+      { name: "SIMRS Tidak Bisa Login", sla_minutes: 15 },
+      { name: "Error Fitur Aplikasi", sla_minutes: 30 }
+    ]
+  },
+  {
+    category_name: "Jaringan",
+    subcategories: [
+      { name: "Internet Mati", sla_minutes: 30 },
+      { name: "Kabel Lan Putus", sla_minutes: 120 }
+    ]
+  }
+];
 
 function formatDateTime(s) {
   if (!s) return "";
@@ -43,14 +81,9 @@ function generateTicketCode() {
 }
 
 export default function Ticket() {
-  const [user, setUser] = useState(DEFAULT_USER);
-  const [history, setHistory] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [rawEmployees, setRawEmployees] = useState([]);
-
-  const [description, setDescription] = useState("");
-  const [screenshot, setScreenshot] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState(MOCK_USER);
+  const [history, setHistory] = useState(MOCK_HISTORY);
+  const [categories, setCategories] = useState(MOCK_CATEGORIES);
 
   const [isNameDropdownOpen, setIsNameDropdownOpen] = useState(false);
   const [nameSearchQuery, setNameSearchQuery] = useState("");
@@ -59,18 +92,18 @@ export default function Ticket() {
   const [unitSearchQuery, setUnitSearchQuery] = useState("");
 
   const filteredNames = useMemo(() => {
-    const uniqueNames = Array.from(new Set(rawEmployees.map(emp => emp.full_name || emp.name).filter(Boolean)));
+    const uniqueNames = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.name)));
     return uniqueNames.filter(name =>
       name.toLowerCase().includes(nameSearchQuery.toLowerCase())
     );
-  }, [nameSearchQuery, rawEmployees]);
+  }, [nameSearchQuery]);
 
   const filteredUnits = useMemo(() => {
-    const uniqueUnits = Array.from(new Set(rawEmployees.map(emp => emp.unit_name).filter(Boolean)));
+    const uniqueUnits = Array.from(new Set(MOCK_EMPLOYEES.map(emp => emp.unit)));
     return uniqueUnits.filter(unit =>
       unit.toLowerCase().includes(unitSearchQuery.toLowerCase())
     );
-  }, [unitSearchQuery, rawEmployees]);
+  }, [unitSearchQuery]);
 
   const handleSelectName = (name) => {
     setUser({ ...user, name });
@@ -132,61 +165,9 @@ export default function Ticket() {
     }, 800);
   };
 
-  useEffect(() => {
-    // === 1. Detect Device ===
-    fetch(`${API_BASE}/api/tickets/detect-device`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success' && data.device_detected) {
-          const dev = data.data;
-          setUser(prev => ({
-            ...prev,
-            device_id: dev.device_id,
-            hostname: dev.hostname || dev.device_name || '-',
-            ip_address: dev.ip_address || '-',
-            unit: dev.unit || '-',
-            detection_mode: 'LAN'
-          }));
-        }
-      }).catch(console.error);
-
-    // === 2. Fetch Device Users ===
-    fetch(`${API_BASE}/api/device-users`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          setRawEmployees(data.data || []);
-        }
-      }).catch(console.error);
-
-    // === 3. Fetch Categories & Subcategories ===
-    Promise.all([
-      fetch(`${API_BASE}/api/categories`).then(r => r.json()),
-      fetch(`${API_BASE}/api/subcategories`).then(r => r.json())
-    ]).then(([catRes, subRes]) => {
-      if (catRes.status === 'success' && subRes.status === 'success') {
-        const cats = catRes.data || [];
-        const subs = subRes.data || [];
-        
-        const mappedCats = cats.map(c => ({
-          category_id: c.id,
-          category_name: c.name,
-          subcategories: subs.filter(s => s.category_id === c.id)
-        }));
-        
-        setCategories(mappedCats);
-      }
-    }).catch(console.error);
-    
-    // === 4. Fetch Ticket History (Opsional) ===
-    fetch(`${API_BASE}/api/tickets`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          setHistory((data.data || []).slice(0, 5)); // Ambil 5 terakhir
-        }
-      }).catch(console.error);
-  }, []);
+  // useEffect(() => {
+  //   Fetch data sebenarnya ditaruh disini nanti
+  // }, []);
 
   // Derivations
   const subcategories = useMemo(() => {
@@ -238,61 +219,19 @@ export default function Ticket() {
     setSubCategorySearchQuery("");
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      if (user.device_id) formData.append('device_id', user.device_id);
-      formData.append('reporter_name', user.name || '');
-      formData.append('reporter_unit', user.unit || '');
-      formData.append('reporter_contact', ''); // bisa ditambahkan input utk HP
-      formData.append('report_device_brand', user.device_brand || '');
-      formData.append('report_device_model', user.device_model || '');
-      
-      const catObj = categories.find(c => c.category_name === selectedCategory);
-      if (catObj) formData.append('category_id', catObj.category_id);
-      
-      const subCatObj = subcategories.find(s => s.name === selectedSubCategory);
-      if (subCatObj) formData.append('subcategory_id', subCatObj.id);
-
-      formData.append('title', `${selectedCategory} - ${selectedSubCategory}`);
-      formData.append('description', description);
-      
-      if (screenshot) {
-        formData.append('screenshot', screenshot);
-      }
-
-      const res = await fetch(`${API_BASE}/api/tickets`, {
-        method: 'POST',
-        body: formData
-      });
-      const json = await res.json();
-      
-      if (res.ok && json.status === 'success') {
-        const now = new Date();
-        const dString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
-        // Asumsi server mengembalikan ID atau kode di json.data
-        const generatedCode = json.data?.ticket_id ? `TCK-${json.data.ticket_id}` : generateTicketCode();
-        
-        setTicketData({
-          code: generatedCode,
-          categoryText: selectedCategory ? `${selectedCategory}${selectedSubCategory ? " - " + selectedSubCategory : ""}` : "-",
-          unitText: user.unit || "-",
-          waktuText: formatDateTime(dString),
-          waktuRaw: dString,
-          slaText: slaTextValue,
-          perangkatText: `${user.hostname || "-"} (${[user.device_brand, user.device_model].filter(Boolean).join(" ") || "-"})`
-        });
-        setTicketStatus("submitted");
-      } else {
-        alert(json.message || 'Gagal mengirim laporan');
-      }
-    } catch (err) {
-      alert('Terjadi kesalahan koneksi saat mengirim laporan.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleSubmit = () => {
+    const now = new Date();
+    const dString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    setTicketData({
+      code: generateTicketCode(),
+      categoryText: selectedCategory ? `${selectedCategory}${selectedSubCategory ? " - " + selectedSubCategory : ""}` : "-",
+      unitText: user.unit || "-",
+      waktuText: formatDateTime(dString),
+      waktuRaw: dString,
+      slaText: slaTextValue,
+      perangkatText: `${user.hostname || "-"} (${[user.device_brand, user.device_model].filter(Boolean).join(" ") || "-"})`
+    });
+    setTicketStatus("submitted");
   };
 
   const handleCloseTicket = () => {
@@ -304,8 +243,6 @@ export default function Ticket() {
     setSelectedSubCategory("");
     setIsSubCategoryDropdownOpen(false);
     setSubCategorySearchQuery("");
-    setDescription("");
-    setScreenshot(null);
     setTicketStatus("form");
   };
 
@@ -574,11 +511,7 @@ export default function Ticket() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Deskripsi Tambahan (Opsional)
                   </label>
-                  <textarea 
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows="4" 
-                    className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  <textarea rows="4" className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     placeholder="Tuliskan detail tambahan jika diperlukan..."></textarea>
                 </div>
 
@@ -587,12 +520,7 @@ export default function Ticket() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Upload Foto (Opsional)
                   </label>
-                  <input 
-                    type="file" 
-                    onChange={(e) => setScreenshot(e.target.files[0])}
-                    accept="image/*"
-                    className="w-full border rounded-lg p-2" 
-                  />
+                  <input type="file" className="w-full border rounded-lg p-2" />
                 </div>
 
                 {/* SLA */}
@@ -607,10 +535,10 @@ export default function Ticket() {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={!selectedCategory || !selectedSubCategory || isSubmitting}
-                    className={`w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-white transition font-bold lg:font-normal ${(!selectedCategory || !selectedSubCategory || isSubmitting) ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] lg:active:scale-100'}`}
+                    disabled={!selectedCategory || !selectedSubCategory}
+                    className={`w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-white transition font-bold lg:font-normal ${!selectedCategory || !selectedSubCategory ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] lg:active:scale-100'}`}
                   >
-                    {isSubmitting ? 'Mengirim...' : 'Kirim Laporan'}
+                    Kirim Laporan
                   </button>
                 </div>
               </div>
