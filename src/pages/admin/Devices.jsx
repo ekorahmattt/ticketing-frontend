@@ -27,7 +27,6 @@ function apiToUi(d) {
     coordX: d.coord_x || '',
     coordY: d.coord_y || '',
     status: d.status || 'Aktif',
-    loc: d.location || '',
     // users = array of { id, name } dari API
     users: Array.isArray(d.users) ? d.users : [],
     // parentConnections = perangkat induk (komputer) yang terhubung ke device ini
@@ -58,9 +57,9 @@ function uiToApi(form) {
     // Koneksi: selectedConnections berisi komputer yang terhubung (sebagai parent)
     connections: Array.isArray(form.selectedConnections)
       ? form.selectedConnections.map(c => ({
-          parent_device_id: c.device_id,
-          child_device_id:  deviceId,
-        }))
+        parent_device_id: c.device_id,
+        child_device_id: deviceId,
+      }))
       : [],
   };
 }
@@ -432,6 +431,10 @@ export default function Devices() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // ── Modal Delete ─────────────────────────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // ── Fetch Devices ─────────────────────────────────────────────────────────────
   const fetchDevices = useCallback(async () => {
     setLoading(true);
@@ -599,6 +602,32 @@ export default function Devices() {
     }
   };
 
+  // ── Delete Device ─────────────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/devices/${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: apiHeaders(authUser),
+      });
+      const json = await res.json();
+      if (res.ok && json.status === 'success') {
+        showToast(`Perangkat "${deleteTarget.hostname}" berhasil dihapus.`);
+        setDeleteTarget(null);
+        fetchDevices();
+      } else {
+        showToast(json.message || 'Gagal menghapus perangkat.', 'error');
+        setDeleteTarget(null);
+      }
+    } catch {
+      showToast('Tidak dapat terhubung ke server.', 'error');
+      setDeleteTarget(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   // ── Statistik ─────────────────────────────────────────────────────────────────
   const aktif = devices.filter(d => d.status === 'Aktif').length;
   const rusak = devices.filter(d => d.status === 'Rusak').length;
@@ -671,17 +700,17 @@ export default function Devices() {
             <option value="">-- Pilih Tipe Perangkat --</option>
             {deviceTypes.length > 0
               ? deviceTypes.map(dt => (
-                  <option key={dt.id} value={dt.name}>{dt.name}</option>
-                ))
+                <option key={dt.id} value={dt.name}>{dt.name}</option>
+              ))
               : (
-                  // Fallback statis jika API belum tersedia
-                  <>
-                    <option value="Computer">Computer</option>
-                    <option value="Printer">Printer</option>
-                    <option value="Access Point">Access Point</option>
-                    <option value="CCTV">CCTV</option>
-                  </>
-                )
+                // Fallback statis jika API belum tersedia
+                <>
+                  <option value="Computer">Computer</option>
+                  <option value="Printer">Printer</option>
+                  <option value="Access Point">Access Point</option>
+                  <option value="CCTV">CCTV</option>
+                </>
+              )
             }
           </select>
         </div>
@@ -709,10 +738,7 @@ export default function Devices() {
             onChange={val => onChange('unit_id', val)}
           />
         </div>
-        <div>
-          <label className="block text-gray-700 dark:text-gray-300 mb-1">Lokasi</label>
-          <input type="text" value={form.loc || ''} onChange={e => onChange('loc', e.target.value)} placeholder="Gedung, lantai, ruangan..." className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
+
         <div>
           <label className="block text-gray-700 dark:text-gray-300 mb-1">Koordinat X</label>
           <input type="number" value={form.coordX || ''} onChange={e => onChange('coordX', e.target.value)} placeholder="Contoh: 120" className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" />
@@ -919,15 +945,26 @@ export default function Devices() {
                       <td className="py-4 px-6 text-gray-600 dark:text-gray-400">{item.os || '-'}</td>
                       <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
                       <td className="py-4 px-6">
-                        <button
-                          onClick={() => handleOpenEdit(item)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg transition"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          Edit
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEdit(item)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg transition"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(item)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg transition"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Hapus
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1029,6 +1066,49 @@ export default function Devices() {
                   ? <><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menyimpan...</>
                   : <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Simpan Perubahan</>
                 }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal Konfirmasi Hapus ─── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-5 flex items-start gap-4">
+              <div className="shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Hapus Perangkat</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Apakah kamu yakin ingin menghapus perangkat{' '}
+                  <span className="font-semibold text-gray-800 dark:text-gray-100">"{deleteTarget.hostname}"</span>?
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+            <div className="px-6 pb-5 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-60"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-70 text-white font-medium rounded-lg transition shadow-sm flex items-center gap-2"
+              >
+                {deleteLoading ? (
+                  <><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menghapus...</>
+                ) : (
+                  <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> Ya, Hapus</>
+                )}
               </button>
             </div>
           </div>
