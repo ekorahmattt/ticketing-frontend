@@ -6,6 +6,8 @@ export default function Sidebar({ isDarkMode, toggleTheme, onLogout }) {
     { name: "Dashboard", path: "/admin", exact: true },
     { name: "Monitoring Laporan", path: "/admin/monitoring" },
     { name: "Kelola Perangkat", path: "/admin/devices" },
+    { name: "Kelola Device Users", path: "/admin/device-users" },
+    { name: "Jenis Gangguan", path: "/admin/subcategories" },
     { name: "Kelola User Admin", path: "/admin/users" },
   ];
 
