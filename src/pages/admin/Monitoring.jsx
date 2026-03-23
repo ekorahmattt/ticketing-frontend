@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../../components/ui/StatCard';
 import ViewSwitcher from '../../components/feature-specific/ViewSwitcher';
@@ -14,6 +14,114 @@ export default function Monitoring() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // === Modal Tambah Laporan States ===
+  const [reportUser, setReportUser] = useState({ name: "", unit: "" });
+  const [rawEmployees, setRawEmployees] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const [isNameDropdownOpen, setIsNameDropdownOpen] = useState(false);
+  const [nameSearchQuery, setNameSearchQuery] = useState("");
+
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [unitSearchQuery, setUnitSearchQuery] = useState("");
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] = useState(false);
+  const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const filteredNames = useMemo(() => {
+    const uniqueNames = Array.from(new Set(rawEmployees.map(emp => emp.full_name || emp.name).filter(Boolean)));
+    return uniqueNames.filter(name => name.toLowerCase().includes(nameSearchQuery.toLowerCase()));
+  }, [nameSearchQuery, rawEmployees]);
+
+  const filteredUnits = useMemo(() => {
+    const uniqueUnits = Array.from(new Set(rawEmployees.map(emp => emp.unit_name).filter(Boolean)));
+    return uniqueUnits.filter(unit => unit.toLowerCase().includes(unitSearchQuery.toLowerCase()));
+  }, [unitSearchQuery, rawEmployees]);
+
+  const subcategories = useMemo(() => {
+    const cat = categories.find(c => c.category_name === selectedCategory);
+    return cat ? cat.subcategories : [];
+  }, [selectedCategory, categories]);
+
+  const filteredSubCategories = useMemo(() => {
+    return subcategories.filter(s => s.name.toLowerCase().includes(subCategorySearchQuery.toLowerCase()));
+  }, [subcategories, subCategorySearchQuery]);
+
+  const handleSelectName = (name) => {
+    setReportUser({ ...reportUser, name });
+    setIsNameDropdownOpen(false);
+    setNameSearchQuery("");
+  };
+
+  const handleSelectUnit = (unit) => {
+    setReportUser({ ...reportUser, unit });
+    setIsUnitDropdownOpen(false);
+    setUnitSearchQuery("");
+  };
+
+  const handleSelectSubCategory = (subCatName) => {
+    setSelectedSubCategory(subCatName);
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
+  };
+
+  const handleCategoryChange = (e) => {
+    setSelectedCategory(e.target.value);
+    setSelectedSubCategory("");
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
+  };
+
+  const handleSimpanManual = async () => {
+    if (!selectedCategory || !selectedSubCategory) {
+      alert("Kategori dan Jenis Gangguan harus dipilih!");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const catObj = categories.find(c => c.category_name === selectedCategory);
+      const subCatObj = subcategories.find(s => s.name === selectedSubCategory);
+
+      const now = new Date();
+      const clientCreatedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+      const payload = {
+        reporter_name: reportUser.name || '',
+        reporter_unit: reportUser.unit || '',
+        category_id: catObj ? catObj.category_id : null,
+        subcategory_id: subCatObj ? subCatObj.id : null,
+        title: `${selectedCategory} - ${selectedSubCategory}`,
+        description: 'Laporan Manual dari Admin',
+        created_at: clientCreatedAt
+      };
+
+      const res = await fetch(`${API_BASE}/api/tickets`, {
+        method: 'POST',
+        headers: apiHeaders(user),
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      
+      if (res.ok && json.status === 'success') {
+        alert("Berhasil menambahkan laporan!");
+        setIsModalOpen(false);
+        setReportUser({ name: '', unit: '' });
+        setSelectedCategory('');
+        setSelectedSubCategory('');
+        fetchTickets();
+      } else {
+        alert(json.message || 'Gagal menyimpan laporan');
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const fetchTickets = async () => {
     try {
@@ -34,10 +142,38 @@ export default function Monitoring() {
 
   useEffect(() => {
     fetchTickets();
+
+    // Fetch Device Users
+    fetch(`${API_BASE}/api/device-users`, { headers: apiHeaders(user) })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          setRawEmployees(data.data || []);
+        }
+      }).catch(console.error);
+
+    // Fetch Categories & Subcategories
+    Promise.all([
+      fetch(`${API_BASE}/api/categories`, { headers: apiHeaders(user) }).then(r => r.json()),
+      fetch(`${API_BASE}/api/subcategories`, { headers: apiHeaders(user) }).then(r => r.json())
+    ]).then(([catRes, subRes]) => {
+      if (catRes.status === 'success' && subRes.status === 'success') {
+        const cats = catRes.data || [];
+        const subs = subRes.data || [];
+        const mappedCats = cats.map(c => ({
+          category_id: c.id,
+          category_name: c.name,
+          subcategories: subs.filter(s => s.category_id === c.id)
+        }));
+        setCategories(mappedCats);
+      }
+    }).catch(console.error);
+
   }, [user]);
 
   // Statistik & Filter Hari Ini
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const ticketsToday = tickets.filter(t => t.created_at && t.created_at.startsWith(todayStr));
   
   const totalHariIni = ticketsToday.length;
@@ -114,11 +250,11 @@ export default function Monitoring() {
         {view === 'list' ? (
           isLoading ? (
             <div className="p-6 text-center text-gray-500">Memuat data...</div>
-          ) : tickets.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">Belum ada laporan.</div>
+          ) : ticketsToday.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">Belum ada laporan hari ini.</div>
           ) : (
             <Table headers={["ID Laporan", "Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]} >
-              {tickets.map((item, i) => (
+              {ticketsToday.map((item, i) => (
                 <tr
                   key={i}
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
@@ -165,7 +301,7 @@ export default function Monitoring() {
       {/* Modal Tambah Laporan */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg overflow-visible flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Tambah Laporan Manual</h2>
               <button
@@ -178,41 +314,177 @@ export default function Monitoring() {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4">
-              <div>
+            <div className="p-6 overflow-visible space-y-5">
+              
+              {/* Nama Pelapor Dropdown */}
+              <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nama Pelapor</label>
-                <input
-                  type="text"
-                  placeholder="Masukkan nama pelapor..."
-                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                  onClick={() => setIsNameDropdownOpen(!isNameDropdownOpen)}
+                >
+                  <span className={reportUser.name ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
+                    {reportUser.name || "Pilih / Cari Nama Pelapor..."}
+                  </span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isNameDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                {isNameDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                    <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                      <input
+                        type="text"
+                        placeholder="Cari nama pegawai..."
+                        className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                        value={nameSearchQuery}
+                        onChange={(e) => setNameSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (filteredNames.length > 0) handleSelectName(filteredNames[0]);
+                          }
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                      {filteredNames.length > 0 ? (
+                        filteredNames.map((name, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
+                            onClick={() => handleSelectName(name)}
+                          >
+                            <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{name}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-sm text-gray-500 text-center">Nama tidak ditemukan</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
+
+              {/* Nama Unit Dropdown */}
+              <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nama Unit</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: IGD, Laboratorium..."
-                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                  onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                >
+                  <span className={reportUser.unit ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
+                    {reportUser.unit || "Pilih / Cari Unit..."}
+                  </span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isUnitDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                {isUnitDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                    <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                      <input
+                        type="text"
+                        placeholder="Cari unit..."
+                        className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                        value={unitSearchQuery}
+                        onChange={(e) => setUnitSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (filteredUnits.length > 0) handleSelectUnit(filteredUnits[0]);
+                          }
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                      {filteredUnits.length > 0 ? (
+                        filteredUnits.map((unit, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
+                            onClick={() => handleSelectUnit(unit)}
+                          >
+                            <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{unit}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-sm text-gray-500 text-center">Unit tidak ditemukan</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Kategori Gangguan */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Kategori Gangguan</label>
-                <select className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                <select 
+                   className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+                   value={selectedCategory}
+                   onChange={handleCategoryChange}
+                >
                   <option value="">-- Pilih Kategori --</option>
-                  <option value="Hardware">Hardware</option>
-                  <option value="Software">Software</option>
-                  <option value="Jaringan">Jaringan</option>
-                  <option value="Lainnya">Lainnya</option>
+                  {categories.map((c, idx) => (
+                    <option key={idx} value={c.category_name}>{c.category_name}</option>
+                  ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Jenis Gangguan</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Printer Rusak, PC Mati..."
-                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+
+              {/* Jenis Gangguan Dropdown */}
+              {subcategories.length > 0 && (
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Jenis Gangguan</label>
+                  <div
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
+                  >
+                    <span className={selectedSubCategory ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
+                      {selectedSubCategory || "-- Pilih Jenis Gangguan --"}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isSubCategoryDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  {isSubCategoryDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                      <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                        <input
+                          type="text"
+                          placeholder="Cari jenis gangguan..."
+                          className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                          value={subCategorySearchQuery}
+                          onChange={(e) => setSubCategorySearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (filteredSubCategories.length > 0) handleSelectSubCategory(filteredSubCategories[0].name);
+                            }
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                        {filteredSubCategories.length > 0 ? (
+                          filteredSubCategories.map((s, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
+                              onClick={() => handleSelectSubCategory(s.name)}
+                            >
+                              <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{s.name}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-sm text-gray-500 text-center">Jenis gangguan tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
@@ -223,10 +495,11 @@ export default function Monitoring() {
                 Batal
               </button>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm"
+                onClick={handleSimpanManual}
+                disabled={isSubmitting}
+                className={isSubmitting ? "px-6 py-2 bg-blue-300 text-white font-medium rounded-lg shadow-sm cursor-not-allowed" : "px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm"}
               >
-                Simpan
+                {isSubmitting ? "Menyimpan..." : "Simpan"}
               </button>
             </div>
           </div>

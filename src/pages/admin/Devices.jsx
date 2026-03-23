@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiHeaders, API_BASE } from '../../utils/api';
 import StatCard from '../../components/ui/StatCard';
@@ -27,6 +28,7 @@ function apiToUi(d) {
     coordX: d.coord_x || '',
     coordY: d.coord_y || '',
     status: d.status || 'Aktif',
+    keterangan: d.keterangan || '',
     // users = array of { id, name } dari API
     users: Array.isArray(d.users) ? d.users : [],
     // parentConnections = perangkat induk (komputer) yang terhubung ke device ini
@@ -52,6 +54,8 @@ function uiToApi(form) {
     unit_id: form.unit_id ? parseInt(form.unit_id) : null,
     coord_x: form.coordX ? parseInt(form.coordX) : null,
     coord_y: form.coordY ? parseInt(form.coordY) : null,
+    status: form.status,
+    keterangan: form.keterangan,
     // Kirim array of user id
     users: Array.isArray(form.selectedUsers) ? form.selectedUsers.map(u => u.id) : [],
     // Koneksi: selectedConnections berisi komputer yang terhubung (sebagai parent)
@@ -385,7 +389,7 @@ const EMPTY_ADD_FORM = {
   hostname: '', brand: '', model: '', serial: '',
   type: '', ip: '', mac: '', remote: '',
   os: '', unit_id: null, coordX: '', coordY: '',
-  status: 'Aktif', loc: '',
+  status: 'Aktif', loc: '', keterangan: '',
   selectedUsers: [],
   selectedConnections: [],
 };
@@ -393,6 +397,7 @@ const EMPTY_ADD_FORM = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Devices() {
   const { user: authUser } = useAuth();
+  const navigate = useNavigate();
 
   const [view, setView] = useState('list');
 
@@ -418,6 +423,7 @@ export default function Devices() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterUnit, setFilterUnit] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   // ── Modal Tambah ─────────────────────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -425,11 +431,7 @@ export default function Devices() {
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
-  // ── Modal Edit ───────────────────────────────────────────────────────────────
-  const [selectedDevice, setSelectedDevice] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState('');
+
 
   // ── Modal Delete ─────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -510,9 +512,10 @@ export default function Devices() {
         d.brand.toLowerCase().includes(searchQuery.toLowerCase());
       const matchType = !filterType || d.type === filterType;
       const matchUnit = !filterUnit || d.unit === filterUnit;
-      return matchSearch && matchType && matchUnit;
+      const matchStatus = !filterStatus || (d.status && d.status.toLowerCase() === filterStatus.toLowerCase());
+      return matchSearch && matchType && matchUnit && matchStatus;
     });
-  }, [devices, searchQuery, filterType, filterUnit]);
+  }, [devices, searchQuery, filterType, filterUnit, filterStatus]);
 
   // ── Tipe unik untuk filter dropdown ──────────────────────────────────────────
   const uniqueTypes = useMemo(() => [...new Set(devices.map(d => d.type).filter(Boolean))], [devices]);
@@ -554,53 +557,7 @@ export default function Devices() {
     }
   };
 
-  // ── Edit Device ───────────────────────────────────────────────────────────────
-  const handleOpenEdit = (device) => {
-    setSelectedDevice(device);
-    setEditForm({
-      ...device,
-      selectedUsers: device.users,
-      // unit_id sudah ada di device dari apiToUi
-      unit_id: device.unit_id || null,
-      // Pre-populate dari parentConnections
-      selectedConnections: Array.isArray(device.parentConnections) ? device.parentConnections : [],
-    });
-    setEditError('');
-  };
 
-  const handleEditChange = (field, value) => {
-    setEditForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editForm.hostname?.trim()) {
-      setEditError('Nama perangkat (Hostname) wajib diisi.');
-      return;
-    }
-    setEditSaving(true);
-    setEditError('');
-    try {
-      const payload = uiToApi(editForm);
-      const res = await fetch(`${API_BASE}/api/devices/${selectedDevice.id}`, {
-        method: 'PUT',
-        headers: apiHeaders(authUser),
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (res.ok && json.status === 'success') {
-        showToast('Perangkat berhasil diperbarui.');
-        setSelectedDevice(null);
-        setEditForm({});
-        fetchDevices();
-      } else {
-        setEditError(json.message || 'Gagal memperbarui perangkat.');
-      }
-    } catch {
-      setEditError('Tidak dapat terhubung ke server.');
-    } finally {
-      setEditSaving(false);
-    }
-  };
 
   // ── Delete Device ─────────────────────────────────────────────────────────────
   const handleDelete = async () => {
@@ -758,6 +715,18 @@ export default function Devices() {
             <option value="Tidak Aktif">Tidak Aktif</option>
           </select>
         </div>
+        {form.status === 'Rusak' && (
+          <div>
+            <label className="block text-gray-700 dark:text-gray-300 mb-1">Keterangan Kerusakan</label>
+            <textarea
+              value={form.keterangan || ''}
+              onChange={e => onChange('keterangan', e.target.value)}
+              placeholder="Masukkan penyebab dan kondisi kerusakan..."
+              className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+              rows="3"
+            ></textarea>
+          </div>
+        )}
       </div>
 
       {/* Koneksi Perangkat — tampil hanya jika ada perangkat Computer tersedia */}
@@ -885,6 +854,17 @@ export default function Devices() {
                 <option key={u.id} value={u.name}>{u.name}</option>
               ))}
             </select>
+            {/* Filter Status */}
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Semua Status</option>
+              <option value="Aktif">Aktif</option>
+              <option value="Rusak">Rusak</option>
+              <option value="Tidak Aktif">Tidak Aktif</option>
+            </select>
             {/* Search Bar */}
             <input
               type="text"
@@ -926,7 +906,7 @@ export default function Devices() {
                 {filteredDevices.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center text-gray-400 dark:text-gray-600 text-sm">
-                      {searchQuery || filterType || filterUnit ? 'Tidak ada perangkat yang cocok dengan filter.' : 'Belum ada perangkat terdaftar.'}
+                      {searchQuery || filterType || filterUnit || filterStatus ? 'Tidak ada perangkat yang cocok dengan filter.' : 'Belum ada perangkat terdaftar.'}
                     </td>
                   </tr>
                 ) : (
@@ -947,13 +927,13 @@ export default function Devices() {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleOpenEdit(item)}
+                            onClick={() => navigate(`/admin/devices/${item.id}`)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg transition"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            Edit
+                            Detail
                           </button>
                           <button
                             onClick={() => setDeleteTarget(item)}
@@ -1029,48 +1009,6 @@ export default function Devices() {
         </div>
       )}
 
-      {/* ─── Modal Edit Perangkat ─── */}
-      {selectedDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Edit Perangkat</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">{selectedDevice.hostname} (ID: {selectedDevice.id})</p>
-              </div>
-              <button onClick={() => { setSelectedDevice(null); setEditForm({}); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4 font-medium text-sm">
-              {editError && (
-                <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-3 text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  {editError}
-                </div>
-              )}
-              {renderFormFields(editForm, handleEditChange, allUsers, deviceTypes, computerDevices, units)}
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3 shrink-0">
-              <button onClick={() => { setSelectedDevice(null); setEditForm({}); }} className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition">
-                Batal
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={editSaving}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white font-medium rounded-lg transition shadow-sm flex items-center gap-2"
-              >
-                {editSaving
-                  ? <><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Menyimpan...</>
-                  : <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Simpan Perubahan</>
-                }
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ─── Modal Konfirmasi Hapus ─── */}
       {deleteTarget && (

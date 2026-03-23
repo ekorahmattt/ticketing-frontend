@@ -258,6 +258,10 @@ export default function Ticket() {
       formData.append('title', `${selectedCategory} - ${selectedSubCategory}`);
       formData.append('description', description);
       
+      const submitNow = new Date();
+      const submitDString = `${submitNow.getFullYear()}-${String(submitNow.getMonth() + 1).padStart(2, '0')}-${String(submitNow.getDate()).padStart(2, '0')} ${String(submitNow.getHours()).padStart(2, '0')}:${String(submitNow.getMinutes()).padStart(2, '0')}:${String(submitNow.getSeconds()).padStart(2, '0')}`;
+      formData.append('created_at', submitDString);
+
       if (screenshot) {
         formData.append('screenshot', screenshot);
       }

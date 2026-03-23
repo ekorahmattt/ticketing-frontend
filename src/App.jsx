@@ -11,6 +11,7 @@ import Users from './pages/admin/Users'
 import DeviceUsers from './pages/admin/DeviceUsers'
 import SubCategories from './pages/admin/SubCategories'
 import TicketDetail from './pages/admin/TicketDetail'
+import DeviceDetails from './pages/admin/DeviceDetails'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="monitoring" element={<Monitoring />} />
             <Route path="devices" element={<Devices />} />
+            <Route path="devices/:id" element={<DeviceDetails />} />
             <Route path="device-users" element={<DeviceUsers />} />
             <Route path="subcategories" element={<SubCategories />} />
             <Route path="users" element={<Users />} />
