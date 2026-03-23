@@ -122,9 +122,24 @@ export default function TicketDetail() {
     }
   };
 
-  const handleDeleteTicket = () => {
-    setIsDeleteModalOpen(false);
-    navigate(-1);
+  const handleDeleteTicket = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/${id}`, {
+        method: 'DELETE',
+        headers: apiHeaders(user)
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setIsDeleteModalOpen(false);
+        navigate('/admin/monitoring');
+      } else {
+        alert('Gagal menghapus ticket: ' + (data.message || 'Error occurred'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan saat menghapus ticket.');
+    }
   };
 
   if (isLoading || !ticket) {
@@ -332,12 +347,12 @@ export default function TicketDetail() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Hapus Ticket?</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Fitur ini belum ada di API.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Tindakan ini permanen dan tidak dapat dibatalkan.</p>
               </div>
             </div>
             <div className="px-6 py-5">
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Fitur hapus ticket belum diimplementasikan di backend API.
+                Apakah Anda yakin ingin menghapus ticket ini? Semua data laporan dan riwayat terkait ticket ini akan dihapus dari sistem.
               </p>
             </div>
             <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
@@ -345,7 +360,13 @@ export default function TicketDetail() {
                 onClick={() => setIsDeleteModalOpen(false)}
                 className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
               >
-                Tutup
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteTicket}
+                className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition"
+              >
+                Oke, Hapus
               </button>
             </div>
           </div>

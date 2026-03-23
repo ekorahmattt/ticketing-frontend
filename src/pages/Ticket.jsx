@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 import { API_BASE } from '../utils/api';
 
@@ -24,12 +25,7 @@ function formatDateTime(s) {
   return `${d} ${months[m - 1]} ${y} - ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
-function statusClass(color) {
-  if (color === "green") return "bg-green-100 text-green-600";
-  if (color === "yellow") return "bg-yellow-100 text-yellow-700";
-  if (color === "red") return "bg-red-100 text-red-600";
-  return "bg-gray-100 text-gray-600";
-}
+
 
 function generateTicketCode() {
   const now = new Date();
@@ -43,8 +39,8 @@ function generateTicketCode() {
 }
 
 export default function Ticket() {
+  const { login, isAuthenticated } = useAuth();
   const [user, setUser] = useState(DEFAULT_USER);
-  const [history, setHistory] = useState([]);
   const [categories, setCategories] = useState([]);
   const [rawEmployees, setRawEmployees] = useState([]);
 
@@ -98,6 +94,10 @@ export default function Ticket() {
   const [ticketStatus, setTicketStatus] = useState("form"); // "form" | "submitted"
   const [ticketData, setTicketData] = useState(null);
 
+  // --- State untuk Modal Validasi ---
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
+
   // --- State untuk modal Update Ticket ---
   const navigate = useNavigate();
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -108,28 +108,42 @@ export default function Ticket() {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
-  const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
-
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
     if (!adminLoginForm.username.trim() || !adminLoginForm.password.trim()) {
       setAdminLoginError('Username dan password wajib diisi.');
       return;
     }
     setAdminLoginLoading(true);
-    setTimeout(() => {
-      if (
-        adminLoginForm.username === ADMIN_CREDENTIALS.username &&
-        adminLoginForm.password === ADMIN_CREDENTIALS.password
-      ) {
-        setAdminLoginLoading(false);
+    setAdminLoginError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: adminLoginForm.username,
+          password: adminLoginForm.password
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        login(data.data);
         setIsAdminLoginModalOpen(false);
-        navigate(`/admin/ticket/${ticketData?.code || 'TCK-001'}`);
+        if (ticketData?.id) {
+          navigate(`/admin/ticket/${ticketData.id}`);
+        } else if (ticketData?.code) {
+          navigate(`/admin/ticket/${ticketData.code}`);
+        } else {
+          navigate('/admin/monitoring');
+        }
       } else {
-        setAdminLoginError('Username atau password salah.');
-        setAdminLoginLoading(false);
+        setAdminLoginError(data.message || 'Username atau password salah.');
       }
-    }, 800);
+    } catch (err) {
+      setAdminLoginError('Terjadi kesalahan koneksi.');
+    } finally {
+      setAdminLoginLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -178,14 +192,6 @@ export default function Ticket() {
       }
     }).catch(console.error);
     
-    // === 4. Fetch Ticket History (Opsional) ===
-    fetch(`${API_BASE}/api/tickets`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          setHistory((data.data || []).slice(0, 5)); // Ambil 5 terakhir
-        }
-      }).catch(console.error);
   }, []);
 
   // Derivations
@@ -239,6 +245,19 @@ export default function Ticket() {
   };
 
   const handleSubmit = async () => {
+    // Validasi input belum diisi
+    const missingFields = [];
+    if (!user.name) missingFields.push("Nama Pelapor");
+    if (!user.unit) missingFields.push("Unit");
+    if (!selectedCategory) missingFields.push("Kategori Gangguan");
+    if (!selectedSubCategory) missingFields.push("Jenis Gangguan");
+    
+    if (missingFields.length > 0) {
+      setValidationErrors(missingFields);
+      setIsValidationModalOpen(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const formData = new FormData();
@@ -280,6 +299,7 @@ export default function Ticket() {
         const generatedCode = json.data?.ticket_id ? `TCK-${json.data.ticket_id}` : generateTicketCode();
         
         setTicketData({
+          id: json.data?.ticket_id,
           code: generatedCode,
           categoryText: selectedCategory ? `${selectedCategory}${selectedSubCategory ? " - " + selectedSubCategory : ""}` : "-",
           unitText: user.unit || "-",
@@ -311,6 +331,30 @@ export default function Ticket() {
     setDescription("");
     setScreenshot(null);
     setTicketStatus("form");
+  };
+
+  const handleCancelTicket = async () => {
+    if (!ticketData || !ticketData.id) {
+       alert('Ticket ID tidak ditemukan. Batal tidak bisa dilakukan.');
+       setIsCancelConfirmOpen(false);
+       return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/${ticketData.id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setIsCancelConfirmOpen(false);
+        alert('Laporan berhasil dibatalkan.');
+        handleNewReport();
+      } else {
+        alert('Gagal membatalkan laporan: ' + (data.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan koneksi saat membatalkan laporan.');
+    }
   };
 
   const currentTime = new Date();
@@ -463,27 +507,6 @@ export default function Ticket() {
               </div>
             </div>
 
-            {/* Riwayat Laporan */}
-            <div className="hidden lg:block bg-white rounded-2xl shadow p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">
-                Riwayat Laporan Terakhir
-              </h2>
-
-              <div className="space-y-3">
-                {history.map((item, idx) => (
-                  <div key={idx} className="border rounded-xl p-4">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-medium">{item.category} - {item.subcategory}</p>
-                      <span className={`px-2 py-1 text-xs ${statusClass(item.status_color)} rounded-full`}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{formatDateTime(item.created_at)}</p>
-                  </div>
-                ))}
-              </div>
-
-            </div>
           </div>
 
           {/* ================= RIGHT PANEL ================= */}
@@ -611,8 +634,8 @@ export default function Ticket() {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={!selectedCategory || !selectedSubCategory || isSubmitting}
-                    className={`w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-white transition font-bold lg:font-normal ${(!selectedCategory || !selectedSubCategory || isSubmitting) ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] lg:active:scale-100'}`}
+                    disabled={isSubmitting}
+                    className={`w-full lg:w-auto px-6 py-3 rounded-xl lg:rounded-lg text-white transition font-bold lg:font-normal ${isSubmitting ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] lg:active:scale-100'}`}
                   >
                     {isSubmitting ? 'Mengirim...' : 'Kirim Laporan'}
                   </button>
@@ -778,6 +801,38 @@ export default function Ticket() {
         </div>
       </div>
 
+      {/* ============ MODAL: VALIDASI TICKET ============ */}
+      {isValidationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden text-center">
+            <div className="px-6 py-6 border-b border-gray-100 flex flex-col items-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Data Belum Lengkap!</h3>
+              <p className="text-sm text-gray-500 mt-2">Mohon lengkapi form berikut sebelum mengirim laporan:</p>
+            </div>
+            <div className="p-5 text-left bg-gray-50 border-b border-gray-100">
+              <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                {validationErrors.map((err, idx) => (
+                  <li key={idx}><span className="font-semibold">{err}</span> belum diinput</li>
+                ))}
+              </ul>
+            </div>
+            <div className="p-5">
+              <button
+                onClick={() => setIsValidationModalOpen(false)}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors shadow-sm"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ============ MODAL: PILIHAN AKSI TICKET ============ */}
       {isActionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -789,7 +844,22 @@ export default function Ticket() {
             <div className="p-5 space-y-3">
               {/* Update Ticket (Admin) */}
               <button
-                onClick={() => { setIsActionModalOpen(false); setIsAdminLoginModalOpen(true); setAdminLoginError(''); setAdminLoginForm({ username: '', password: '' }); }}
+                onClick={() => {
+                  setIsActionModalOpen(false);
+                  if (isAuthenticated) {
+                    if (ticketData?.id) {
+                      navigate(`/admin/ticket/${ticketData.id}`);
+                    } else if (ticketData?.code) {
+                      navigate(`/admin/ticket/${ticketData.code}`);
+                    } else {
+                      navigate('/admin/monitoring');
+                    }
+                  } else {
+                    setIsAdminLoginModalOpen(true);
+                    setAdminLoginError('');
+                    setAdminLoginForm({ username: '', password: '' });
+                  }
+                }}
                 className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-100 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 transition text-left group"
               >
                 <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
@@ -857,7 +927,7 @@ export default function Ticket() {
                 Kembali
               </button>
               <button
-                onClick={() => { setIsCancelConfirmOpen(false); handleNewReport(); }}
+                onClick={handleCancelTicket}
                 className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition"
               >
                 Ya, Batalkan

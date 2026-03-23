@@ -123,9 +123,9 @@ export default function Monitoring() {
     }
   };
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       const res = await fetch(`${API_BASE}/api/tickets`, {
         headers: apiHeaders(user)
       });
@@ -136,12 +136,17 @@ export default function Monitoring() {
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTickets();
+    fetchTickets(true);
+
+    // Polling setiap 5 detik untuk mendapatkan data secara real-time
+    const intervalId = setInterval(() => {
+      fetchTickets(false);
+    }, 5000);
 
     // Fetch Device Users
     fetch(`${API_BASE}/api/device-users`, { headers: apiHeaders(user) })
@@ -169,6 +174,7 @@ export default function Monitoring() {
       }
     }).catch(console.error);
 
+    return () => clearInterval(intervalId);
   }, [user]);
 
   // Statistik & Filter Hari Ini
