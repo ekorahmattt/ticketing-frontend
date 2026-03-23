@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
+import { API_BASE } from '../utils/api';
+import newTicketSound from '../sounds/new ticket.mp3';
 
 const statusPriority = {
     open: 0,
@@ -10,86 +13,6 @@ function formatTimeHHmm(dateOrTs) {
     const d = typeof dateOrTs === "number" ? new Date(dateOrTs) : dateOrTs;
     return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
-
-function todayTimestampFromHHmm(hhmm) {
-    const [h, m] = String(hhmm).split(":").map((v) => Number(v));
-    const now = new Date();
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
-    return d.getTime();
-}
-
-function createTicketId() {
-    const now = new Date();
-    const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
-    const seq = String(Math.floor(Math.random() * 900) + 100);
-    return `TCK-${ymd}-${seq}`;
-}
-
-const INITIAL_TICKETS = [
-    {
-        id: "TCK-20260221-009",
-        status: "open",
-        unit: "IGD",
-        category: "HARDWARE",
-        subcategory: "PRINTER TIDAK BISA CETAK",
-        createdAt: todayTimestampFromHHmm("22:45"),
-        isNew: true
-    },
-    {
-        id: "TCK-20260221-010",
-        status: "process",
-        unit: "RAWAT INAP",
-        category: "NETWORK",
-        subcategory: "JARINGAN LAMBAT",
-        createdAt: todayTimestampFromHHmm("22:50"),
-        isNew: false
-    },
-    {
-        id: "TCK-20260221-011",
-        status: "process",
-        unit: "LAB",
-        category: "APPLICATION",
-        subcategory: "SIMRS ERROR LOGIN",
-        createdAt: todayTimestampFromHHmm("23:02"),
-        isNew: false
-    },
-    {
-        id: "TCK-20260221-012",
-        status: "done",
-        unit: "RADIOLOGI",
-        category: "HARDWARE",
-        subcategory: "PC TIDAK MENYALA",
-        createdAt: todayTimestampFromHHmm("23:10"),
-        isNew: false
-    },
-    {
-        id: "TCK-20260221-013",
-        status: "open",
-        unit: "FARMASI",
-        category: "NETWORK",
-        subcategory: "WIFI PUTUS-SAMBUNG",
-        createdAt: todayTimestampFromHHmm("23:18"),
-        isNew: false
-    },
-    {
-        id: "TCK-20260221-014",
-        status: "process",
-        unit: "POLIKLINIK",
-        category: "APPLICATION",
-        subcategory: "SIMPUS LAMBAT",
-        createdAt: todayTimestampFromHHmm("23:26"),
-        isNew: false
-    },
-    {
-        id: "TCK-20260221-015",
-        status: "done",
-        unit: "ICU",
-        category: "NETWORK",
-        subcategory: "LAN NORMAL KEMBALI",
-        createdAt: todayTimestampFromHHmm("23:31"),
-        isNew: false
-    }
-];
 
 function getStatusConfig(status) {
     switch (status) {
@@ -117,8 +40,40 @@ function getStatusConfig(status) {
 }
 
 export default function Monitor() {
-    const [tickets, setTickets] = useState(INITIAL_TICKETS);
+    const [tickets, setTickets] = useState([]);
     const [timeString, setTimeString] = useState("");
+
+    const fetchTickets = async (highlightNewDbId = null) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/tickets`);
+            const json = await res.json();
+            if (json.status === 'success') {
+                const mappedData = json.data.map(d => {
+                   let status = 'open';
+                   if (d.status === 'baru' || d.status === 'open') status = 'open';
+                   else if (d.status === 'proses' || d.status === 'diproses' || d.status === 'process') status = 'process';
+                   else if (d.status === 'selesai' || d.status === 'done' || d.status === 'closed') status = 'done';
+                   else if (d.status === 'on hold' || d.status === 'hold' || d.status === 'on_hold') status = 'on_hold';
+                   else if (d.status === 'canceled' || d.status === 'batal' || d.status === 'cancelled') status = 'cancelled';
+                   
+                   return {
+                      id: d.code || `TCK-${d.id}`,
+                      dbId: String(d.id),
+                      status: status,
+                      unit: d.reporter_unit || '-',
+                      category: d.category || '-',
+                      subcategory: d.subcategory || '-',
+                      createdAt: new Date(d.created_at).getTime(),
+                      createdAtStr: d.created_at,
+                      isNew: String(d.id) === String(highlightNewDbId)
+                   };
+                });
+                setTickets(mappedData);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     useEffect(() => {
         const updateClock = () => {
@@ -140,7 +95,6 @@ export default function Monitor() {
     }, []);
 
     useEffect(() => {
-        // Automatically mark new initial tickets as not new after 6s
         const initialToUpdate = tickets.filter(t => t.isNew);
         if (initialToUpdate.length > 0) {
             const timerId = setTimeout(() => {
@@ -151,45 +105,31 @@ export default function Monitor() {
     }, [tickets]);
 
     useEffect(() => {
-        const simulateNewTicket = () => {
-            const now = Date.now();
-            const pick = Math.random();
-            const status = pick < 0.55 ? "open" : pick < 0.85 ? "process" : "done";
-            const units = ["IGD", "RAWAT INAP", "LAB", "RADIOLOGI", "FARMASI", "ICU", "POLIKLINIK", "GIZI"];
-            const issues = [
-                { category: "NETWORK", subcategory: "WIFI PUTUS-SAMBUNG" },
-                { category: "HARDWARE", subcategory: "PRINTER MACET" },
-                { category: "APPLICATION", subcategory: "SIMRS TIDAK BISA LOGIN" },
-                { category: "HARDWARE", subcategory: "PC BLUE SCREEN" },
-                { category: "NETWORK", subcategory: "JARINGAN LAMBAT" }
-            ];
+        fetchTickets();
 
-            const unit = units[Math.floor(Math.random() * units.length)];
-            const issue = issues[Math.floor(Math.random() * issues.length)];
+        const socket = io('http://localhost:3001');
+        socket.on('ticketUpdated', (payload) => {
+            let newId = null;
+            if (payload?.event === 'ticket_created') {
+                newId = payload?.data?.ticket_id;
+                try {
+                    const audio = new Audio(newTicketSound);
+                    audio.play().catch(e => console.error("Audio block play failed:", e));
+                } catch (err) {}
+            }
+            fetchTickets(newId);
+        });
 
-            const newTicket = {
-                id: createTicketId(),
-                status,
-                unit,
-                category: issue.category,
-                subcategory: issue.subcategory,
-                createdAt: now,
-                isNew: true
-            };
-
-            setTickets(prev => [newTicket, ...prev]);
-
-            // Remove new status after 7s
-            setTimeout(() => {
-                setTickets(prev => prev.map(t => t.id === newTicket.id ? { ...t, isNew: false } : t));
-            }, 7000);
+        return () => {
+            socket.disconnect();
         };
-
-        const intervalId = setInterval(simulateNewTicket, 8000);
-        return () => clearInterval(intervalId);
     }, []);
 
-    const sortedTickets = [...tickets].sort((a, b) => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const ticketsToday = tickets.filter(t => t.createdAtStr && t.createdAtStr.startsWith(todayStr));
+
+    const sortedTickets = [...ticketsToday].sort((a, b) => {
         const pa = statusPriority[a.status] ?? 99;
         const pb = statusPriority[b.status] ?? 99;
         if (pa !== pb) return pa - pb;
@@ -198,10 +138,10 @@ export default function Monitor() {
         return tb - ta;
     });
 
-    const openCount = tickets.filter(t => t.status === "open").length;
-    const processCount = tickets.filter(t => t.status === "process").length;
-    const doneCount = tickets.filter(t => t.status === "done").length;
-    const totalCount = tickets.length;
+    const openCount = ticketsToday.filter(t => t.status === "open").length;
+    const processCount = ticketsToday.filter(t => t.status === "process").length;
+    const doneCount = ticketsToday.filter(t => t.status === "done").length;
+    const totalCount = ticketsToday.length;
 
     return (
         <div className="bg-gray-950 text-white h-screen overflow-hidden flex flex-col">

@@ -6,6 +6,8 @@ import Table from '../../components/ui/Table';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE, apiHeaders } from '../../utils/api';
+import { io } from 'socket.io-client';
+import newTicketSound from '../../sounds/new ticket.mp3';
 
 export default function Monitoring() {
   const [view, setView] = useState('list');
@@ -143,10 +145,22 @@ export default function Monitoring() {
   useEffect(() => {
     fetchTickets(true);
 
-    // Polling setiap 5 detik untuk mendapatkan data secara real-time
-    const intervalId = setInterval(() => {
+    const socket = io('http://localhost:3001');
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket server');
+    });
+
+    socket.on('ticketUpdated', (payload) => {
+      console.log('WebSocket trigger received:', payload);
+      if (payload?.event === 'ticket_created') {
+        try {
+          const audio = new Audio(newTicketSound);
+          audio.play().catch(e => console.error("Audio block play failed:", e));
+        } catch (err) {}
+      }
       fetchTickets(false);
-    }, 5000);
+    });
 
     // Fetch Device Users
     fetch(`${API_BASE}/api/device-users`, { headers: apiHeaders(user) })
@@ -174,7 +188,9 @@ export default function Monitoring() {
       }
     }).catch(console.error);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      socket.disconnect();
+    };
   }, [user]);
 
   // Statistik & Filter Hari Ini

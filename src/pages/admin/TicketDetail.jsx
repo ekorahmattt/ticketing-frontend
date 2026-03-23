@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE, apiHeaders } from '../../utils/api';
+import { io } from 'socket.io-client';
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -23,9 +24,86 @@ export default function TicketDetail() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  const [updateSuccessMsg, setUpdateSuccessMsg] = useState("");
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'open': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800';
+      case 'process': return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800';
+      case 'done': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
+      case 'on_hold': return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
+      case 'cancelled': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
+      default: return 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300';
+    }
+  };
+
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] = useState(false);
+  const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
+
+  const subcategories = useMemo(() => {
+    const cat = categories.find(c => c.category_name === selectedCategory);
+    return cat ? cat.subcategories : [];
+  }, [selectedCategory, categories]);
+
+  const filteredSubCategories = useMemo(() => {
+    return subcategories.filter(s =>
+      s.name.toLowerCase().includes(subCategorySearchQuery.toLowerCase())
+    );
+  }, [subcategories, subCategorySearchQuery]);
+
+  const handleCategoryChange = (e) => {
+    setSelectedCategory(e.target.value);
+    setSelectedSubCategory("");
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
+  };
+
+  const handleSelectSubCategory = (subCatName) => {
+    setSelectedSubCategory(subCatName);
+    setIsSubCategoryDropdownOpen(false);
+    setSubCategorySearchQuery("");
+  };
+
   useEffect(() => {
     fetchTicketDetail();
     fetchAdmins();
+
+    // Fetch Categories & Subcategories
+    Promise.all([
+      fetch(`${API_BASE}/api/categories`, { headers: apiHeaders(user) }).then(r => r.json()),
+      fetch(`${API_BASE}/api/subcategories`, { headers: apiHeaders(user) }).then(r => r.json())
+    ]).then(([catRes, subRes]) => {
+      if (catRes.status === 'success' && subRes.status === 'success') {
+        const cats = catRes.data || [];
+        const subs = subRes.data || [];
+        
+        const mappedCats = cats.map(c => ({
+          category_id: c.id,
+          category_name: c.name,
+          subcategories: subs.filter(s => s.category_id === c.id)
+        }));
+        
+        setCategories(mappedCats);
+      }
+    }).catch(console.error);
+
+    const socket = io('http://localhost:3001');
+
+    socket.on('ticketUpdated', (payload) => {
+      // Refresh detail when ticket is updated
+      if (payload?.data && String(payload.data.ticket_id) === String(id)) {
+        fetchTicketDetail();
+      } else if (!payload?.data) {
+        fetchTicketDetail();
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [id, user]);
 
   const fetchTicketDetail = async () => {
@@ -53,6 +131,8 @@ export default function TicketDetail() {
           name: d.reporter_name || "",
           unit: d.reporter_unit || ""
         });
+        setSelectedCategory(d.category || '');
+        setSelectedSubCategory(d.subcategory || '');
       }
     } catch (err) {
       console.error(err);
@@ -81,14 +161,26 @@ export default function TicketDetail() {
       let isError = false;
 
       // Update Details
+      const payload = {
+        handled_by: handledByInput || null,
+        reporter_name: reporter.name,
+        reporter_unit: reporter.unit
+      };
+
+      const catObj = categories.find(c => c.category_name === selectedCategory);
+      if (catObj) payload.category_id = catObj.category_id;
+      
+      const subCatObj = subcategories.find(s => s.name === selectedSubCategory);
+      if (subCatObj) payload.subcategory_id = subCatObj.id;
+
+      if (selectedCategory && selectedSubCategory) {
+          payload.title = `${selectedCategory} - ${selectedSubCategory}`;
+      }
+
       const detailRes = await fetch(`${API_BASE}/api/tickets/${id}`, {
         method: 'PUT',
         headers: apiHeaders(user),
-        body: JSON.stringify({
-          handled_by: handledByInput || null,
-          reporter_name: reporter.name,
-          reporter_unit: reporter.unit
-        })
+        body: JSON.stringify(payload)
       });
       const detailData = await detailRes.json();
       if (detailData.status !== 'success') {
@@ -113,7 +205,8 @@ export default function TicketDetail() {
       }
 
       if (!isError) {
-        alert("Berhasil update tiket!");
+        setUpdateSuccessMsg("Ticket berhasil diperbarui!");
+        setTimeout(() => setUpdateSuccessMsg(""), 3000);
         fetchTicketDetail();
       }
     } catch (err) {
@@ -147,7 +240,17 @@ export default function TicketDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Toast Notification */}
+      {updateSuccessMsg && (
+        <div className="fixed top-4 right-4 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 animate-fade-in">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="font-semibold">{updateSuccessMsg}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <button onClick={() => navigate(-1)} className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
@@ -228,11 +331,68 @@ export default function TicketDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Kategori Gangguan</label>
-                    <input type="text" readOnly value={ticket.category || '-'} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none font-medium text-sm" />
+                    <select
+                      value={selectedCategory}
+                      onChange={handleCategoryChange}
+                      className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm"
+                    >
+                      <option value="">-- Pilih Kategori --</option>
+                      {categories.map((c, idx) => (
+                        <option key={idx} value={c.category_name}>{c.category_name}</option>
+                      ))}
+                    </select>
                   </div>
-                  <div>
+                  <div className="relative">
                     <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Jenis Gangguan</label>
-                    <input type="text" readOnly value={ticket.subcategory || '-'} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none font-medium text-sm" />
+                    <div
+                      className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer flex justify-between items-center font-medium text-sm"
+                      onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
+                    >
+                      <span className={selectedSubCategory ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}>
+                        {selectedSubCategory || "-- Pilih Jenis Gangguan --"}
+                      </span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isSubCategoryDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+
+                    {isSubCategoryDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                        <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                          <input
+                            type="text"
+                            placeholder="Cari jenis gangguan..."
+                            className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                            value={subCategorySearchQuery}
+                            onChange={(e) => setSubCategorySearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (filteredSubCategories.length > 0) {
+                                  handleSelectSubCategory(filteredSubCategories[0].name);
+                                }
+                              }
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                          {filteredSubCategories.length > 0 ? (
+                            filteredSubCategories.map((s, idx) => (
+                              <div
+                                key={idx}
+                                className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
+                                onClick={() => handleSelectSubCategory(s.name)}
+                              >
+                                <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{s.name}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-sm text-gray-500 text-center">Jenis gangguan tidak ditemukan</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -263,12 +423,16 @@ export default function TicketDetail() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Status</label>
-                      <select value={statusInput} onChange={(e) => setStatusInput(e.target.value)} className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-                         <option value="open">Open</option>
-                         <option value="process">Diproses</option>
-                         <option value="done">Selesai</option>
-                         <option value="on_hold">On Hold</option>
-                         <option value="cancelled">Canceled</option>
+                      <select 
+                        value={statusInput} 
+                        onChange={(e) => setStatusInput(e.target.value)} 
+                        className={`w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 font-semibold outline-none transition-colors ${getStatusColor(statusInput)}`}
+                      >
+                         <option value="open" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 font-medium">Open</option>
+                         <option value="process" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 font-medium">Diproses</option>
+                         <option value="done" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 font-medium">Selesai</option>
+                         <option value="on_hold" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 font-medium">On Hold</option>
+                         <option value="cancelled" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 font-medium">Canceled</option>
                       </select>
                     </div>
                     <div>

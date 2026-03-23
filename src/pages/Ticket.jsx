@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 import { API_BASE } from '../utils/api';
+import { io } from 'socket.io-client';
 
 const DEFAULT_USER = {
   name: "",
@@ -93,6 +94,40 @@ export default function Ticket() {
 
   const [ticketStatus, setTicketStatus] = useState("form"); // "form" | "submitted"
   const [ticketData, setTicketData] = useState(null);
+  const [currentTicketDbStatus, setCurrentTicketDbStatus] = useState("open");
+
+  const ticketId = ticketData?.id;
+
+  useEffect(() => {
+    let socket;
+    if (ticketStatus === "submitted" && ticketId) {
+      socket = io('http://localhost:3001');
+      socket.on('ticketUpdated', async (payload) => {
+        if (payload?.data && String(payload.data.ticket_id) === String(ticketId)) {
+          if (payload.data.new_status) {
+            setCurrentTicketDbStatus(payload.data.new_status);
+          }
+          
+          try {
+            const res = await fetch(`${API_BASE}/api/tickets/${ticketId}`);
+            const json = await res.json();
+            if (res.ok && json.status === 'success' && json.data?.ticket) {
+              const t = json.data.ticket;
+              setTicketData(prev => ({
+                ...prev,
+                categoryText: t.category ? `${t.category}${t.subcategory ? " - " + t.subcategory : ""}` : "-",
+              }));
+            }
+          } catch(err) {
+            console.error("Gagal menarik data ticket realtime:", err);
+          }
+        }
+      });
+    }
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [ticketStatus, ticketId]);
 
   // --- State untuk Modal Validasi ---
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
@@ -308,6 +343,7 @@ export default function Ticket() {
           slaText: slaTextValue,
           perangkatText: `${user.hostname || "-"} (${[user.device_brand, user.device_model].filter(Boolean).join(" ") || "-"})`
         });
+        setCurrentTicketDbStatus("open");
         setTicketStatus("submitted");
       } else {
         alert(json.message || 'Gagal mengirim laporan');
@@ -663,7 +699,13 @@ export default function Ticket() {
                       <span className="lg:hidden">Tiket Anda <span className="font-bold text-gray-700">{ticketData.code}</span> sedang diproses.</span>
                     </p>
                   </div>
-                  <div className="hidden lg:block bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium">OPEN</div>
+                  <div className="hidden lg:block">
+                     {currentTicketDbStatus === 'open' && <span className="bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium uppercase">OPEN</span>}
+                     {currentTicketDbStatus === 'process' && <span className="bg-yellow-100 text-yellow-600 px-4 py-2 rounded-full text-sm font-medium uppercase">DIPROSES</span>}
+                     {currentTicketDbStatus === 'done' && <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-medium uppercase">SELESAI</span>}
+                     {currentTicketDbStatus === 'on_hold' && <span className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium uppercase">ON HOLD</span>}
+                     {currentTicketDbStatus === 'cancelled' && <span className="bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-medium uppercase">BATAL</span>}
+                  </div>
                 </div>
 
                 {/* Desktop Detail Grid */}
@@ -702,7 +744,11 @@ export default function Ticket() {
                 <div className="lg:hidden bg-gray-50 p-4 rounded-xl text-left text-sm space-y-3 mb-5 border">
                   <div className="flex justify-between items-center pb-2 border-b border-gray-200">
                     <span className="text-gray-500">Status</span>
-                    <span className="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-semibold">OPEN</span>
+                    {currentTicketDbStatus === 'open' && <span className="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-semibold uppercase">OPEN</span>}
+                    {currentTicketDbStatus === 'process' && <span className="bg-yellow-100 text-yellow-600 px-2 py-1 rounded text-xs font-semibold uppercase">DIPROSES</span>}
+                    {currentTicketDbStatus === 'done' && <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs font-semibold uppercase">SELESAI</span>}
+                    {currentTicketDbStatus === 'on_hold' && <span className="bg-purple-100 text-purple-600 px-2 py-1 rounded text-xs font-semibold uppercase">ON HOLD</span>}
+                    {currentTicketDbStatus === 'cancelled' && <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-semibold uppercase">BATAL</span>}
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 block">Kategori</p>
@@ -725,15 +771,15 @@ export default function Ticket() {
                         <p className="text-xs text-gray-500">{ticketData.waktuText}</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 opacity-50">
-                      <div className="w-3 h-3 mt-2 bg-gray-300 rounded-full"></div>
+                    <div className={`flex items-start gap-3 ${['open'].includes(currentTicketDbStatus) ? 'opacity-50' : ''}`}>
+                      <div className={`w-3 h-3 mt-2 rounded-full ${['process', 'done'].includes(currentTicketDbStatus) ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
                       <div>
                         <p className="text-sm font-medium text-gray-800">Sedang diproses oleh tim IT</p>
-                        <p className="text-xs text-gray-400">Menunggu update</p>
+                        <p className={`text-xs ${['process', 'done'].includes(currentTicketDbStatus) ? 'text-gray-500' : 'text-gray-400'}`}>Menunggu update</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 opacity-50">
-                      <div className="w-3 h-3 mt-2 bg-gray-300 rounded-full"></div>
+                    <div className={`flex items-start gap-3 ${currentTicketDbStatus === 'done' ? '' : 'opacity-50'}`}>
+                      <div className={`w-3 h-3 mt-2 rounded-full ${currentTicketDbStatus === 'done' ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                       <div>
                         <p className="text-sm font-medium text-gray-800">Selesai</p>
                         <p className="text-xs text-gray-400">-</p>
