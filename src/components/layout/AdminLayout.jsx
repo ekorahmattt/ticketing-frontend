@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/ticketing-backend/index.php';
 
 export default function AdminLayout() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -26,7 +26,13 @@ export default function AdminLayout() {
     }
   }, [isDarkMode]);
 
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+  const toggleTheme = () => {
+    setIsDarkMode(prev => {
+      const isDark = !prev;
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      return isDark;
+    });
+  };
 
   const handleLogout = async () => {
     try {

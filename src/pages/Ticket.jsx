@@ -127,7 +127,7 @@ export default function Ticket() {
           if (payload.data.new_status) {
             setCurrentTicketDbStatus(payload.data.new_status);
           }
-          
+
           try {
             const res = await fetch(`${API_BASE}/api/tickets/${ticketId}`);
             const json = await res.json();
@@ -138,7 +138,7 @@ export default function Ticket() {
                 categoryText: t.category ? `${t.category}${t.subcategory ? " - " + t.subcategory : ""}` : "-",
               }));
             }
-          } catch(err) {
+          } catch (err) {
             console.error("Gagal menarik data ticket realtime:", err);
           }
         }
@@ -280,17 +280,17 @@ export default function Ticket() {
       if (catRes.status === 'success' && subRes.status === 'success') {
         const cats = catRes.data || [];
         const subs = subRes.data || [];
-        
+
         const mappedCats = cats.map(c => ({
           category_id: c.id,
           category_name: c.name,
           subcategories: subs.filter(s => s.category_id === c.id)
         }));
-        
+
         setCategories(mappedCats);
       }
     }).catch(console.error);
-    
+
   }, []);
 
   // Derivations
@@ -320,7 +320,7 @@ export default function Ticket() {
     if (!user.unit) missingFields.push("Unit");
     if (!selectedCategory) missingFields.push("Kategori Gangguan");
     if (!selectedSubCategory) missingFields.push("Jenis Gangguan");
-    
+
     if (missingFields.length > 0) {
       setValidationErrors(missingFields);
       setIsValidationModalOpen(true);
@@ -336,16 +336,16 @@ export default function Ticket() {
       formData.append('reporter_contact', ''); // bisa ditambahkan input utk HP
       formData.append('report_device_brand', user.device_brand || '');
       formData.append('report_device_model', user.device_model || '');
-      
+
       const catObj = categories.find(c => c.category_name === selectedCategory);
       if (catObj) formData.append('category_id', catObj.category_id);
-      
+
       const subCatObj = subcategories.find(s => s.name === selectedSubCategory);
       if (subCatObj) formData.append('subcategory_id', subCatObj.id);
 
       formData.append('title', `${selectedCategory} - ${selectedSubCategory}`);
       formData.append('description', description);
-      
+
       const submitNow = new Date();
       const submitDString = `${submitNow.getFullYear()}-${String(submitNow.getMonth() + 1).padStart(2, '0')}-${String(submitNow.getDate()).padStart(2, '0')} ${String(submitNow.getHours()).padStart(2, '0')}:${String(submitNow.getMinutes()).padStart(2, '0')}:${String(submitNow.getSeconds()).padStart(2, '0')}`;
       formData.append('created_at', submitDString);
@@ -359,14 +359,14 @@ export default function Ticket() {
         body: formData
       });
       const json = await res.json();
-      
+
       if (res.ok && json.status === 'success') {
         const now = new Date();
         const dString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
+
         // Asumsi server mengembalikan ID atau kode di json.data
         const generatedCode = json.data?.ticket_id ? `TCK-${json.data.ticket_id}` : generateTicketCode();
-        
+
         setTicketData({
           id: json.data?.ticket_id,
           code: generatedCode,
@@ -405,9 +405,9 @@ export default function Ticket() {
 
   const handleCancelTicket = async () => {
     if (!ticketData || !ticketData.id) {
-       alert('Ticket ID tidak ditemukan. Batal tidak bisa dilakukan.');
-       setIsCancelConfirmOpen(false);
-       return;
+      alert('Ticket ID tidak ditemukan. Batal tidak bisa dilakukan.');
+      setIsCancelConfirmOpen(false);
+      return;
     }
     try {
       const res = await fetch(`${API_BASE}/api/tickets/${ticketData.id}`, {
@@ -441,7 +441,7 @@ export default function Ticket() {
             {/* Informasi Sistem */}
             <div className="bg-white rounded-2xl shadow p-6 space-y-4">
               <h3 className="text-2xl lg:text-lg font-bold ">
-                RAPB IT SERVICE & SUPPORT CENTER
+                RAPB IT SUPPORT CENTER
               </h3>
 
               {user.detection_mode === "LAN" ? (
@@ -671,10 +671,10 @@ export default function Ticket() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Deskripsi Tambahan (Opsional)
                   </label>
-                  <textarea 
+                  <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    rows="4" 
+                    rows="4"
                     className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     placeholder="Tuliskan detail tambahan jika diperlukan..."></textarea>
                 </div>
@@ -684,19 +684,19 @@ export default function Ticket() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Upload Foto (Opsional)
                   </label>
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     onChange={(e) => setScreenshot(e.target.files[0])}
                     accept="image/*"
-                    className="w-full border rounded-lg p-2" 
+                    className="w-full border rounded-lg p-2"
                   />
                   {screenshot && (
                     <div className="mt-4">
                       <p className="text-xs text-gray-500 mb-2">Preview Foto:</p>
-                      <img 
-                        src={URL.createObjectURL(screenshot)} 
-                        alt="Preview" 
-                        className="max-h-48 rounded border shadow-sm object-contain" 
+                      <img
+                        src={URL.createObjectURL(screenshot)}
+                        alt="Preview"
+                        className="max-h-48 rounded border shadow-sm object-contain"
                       />
                     </div>
                   )}
@@ -740,11 +740,11 @@ export default function Ticket() {
                     </p>
                   </div>
                   <div className="hidden lg:block">
-                     {currentTicketDbStatus === 'open' && <span className="bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium uppercase">OPEN</span>}
-                     {currentTicketDbStatus === 'process' && <span className="bg-yellow-100 text-yellow-600 px-4 py-2 rounded-full text-sm font-medium uppercase">DIPROSES</span>}
-                     {currentTicketDbStatus === 'done' && <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-medium uppercase">SELESAI</span>}
-                     {currentTicketDbStatus === 'on_hold' && <span className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium uppercase">ON HOLD</span>}
-                     {currentTicketDbStatus === 'cancelled' && <span className="bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-medium uppercase">BATAL</span>}
+                    {currentTicketDbStatus === 'open' && <span className="bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-medium uppercase">OPEN</span>}
+                    {currentTicketDbStatus === 'process' && <span className="bg-yellow-100 text-yellow-600 px-4 py-2 rounded-full text-sm font-medium uppercase">DIPROSES</span>}
+                    {currentTicketDbStatus === 'done' && <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-medium uppercase">SELESAI</span>}
+                    {currentTicketDbStatus === 'on_hold' && <span className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium uppercase">ON HOLD</span>}
+                    {currentTicketDbStatus === 'cancelled' && <span className="bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-medium uppercase">BATAL</span>}
                   </div>
                 </div>
 
@@ -870,36 +870,36 @@ export default function Ticket() {
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
               {messages.length > 0 ? (
-                 messages.map((msg, idx) => {
-                   const isMine = msg.sender_type === 'device' || msg.sender_type === 'user';
-                   const timeMatch = msg.created_at.match(/ (\d{2}:\d{2})/);
-                   const timeFormatted = timeMatch ? timeMatch[1] + ' WIB' : '';
-                   return (
-                     <div key={idx} className={`flex flex-col gap-1 max-w-[85%] ${isMine ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
-                       <div className={`p-3 text-sm ${isMine ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'}`}>
-                         {msg.message}
-                       </div>
-                       <span className={`text-[10px] text-gray-400 ${isMine ? 'mr-1' : 'ml-1'}`}>
-                         {isMine ? 'Anda' : (msg.sender_name || 'IT Support')} • {timeFormatted}
-                       </span>
-                     </div>
-                   );
-                 })
-               ) : (
-                 <div className="flex flex-col gap-1 items-start max-w-[85%]">
-                   <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm">
-                     Halo! Ada yang bisa kami bantu terkait laporan Anda?
-                   </div>
-                   <span className="text-[10px] text-gray-400 ml-1">IT Support • Otomatis</span>
-                 </div>
-               )}
-               <div ref={messagesEndRef} />
+                messages.map((msg, idx) => {
+                  const isMine = msg.sender_type === 'device' || msg.sender_type === 'user';
+                  const timeMatch = msg.created_at.match(/ (\d{2}:\d{2})/);
+                  const timeFormatted = timeMatch ? timeMatch[1] + ' WIB' : '';
+                  return (
+                    <div key={idx} className={`flex flex-col gap-1 max-w-[85%] ${isMine ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
+                      <div className={`p-3 text-sm ${isMine ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'}`}>
+                        {msg.message}
+                      </div>
+                      <span className={`text-[10px] text-gray-400 ${isMine ? 'mr-1' : 'ml-1'}`}>
+                        {isMine ? 'Anda' : (msg.sender_name || 'IT Support')} • {timeFormatted}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col gap-1 items-start max-w-[85%]">
+                  <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm">
+                    Halo! Ada yang bisa kami bantu terkait laporan Anda?
+                  </div>
+                  <span className="text-[10px] text-gray-400 ml-1">IT Support • Otomatis</span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="mt-4 pt-4 border-t flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Ketik pesan..." 
+              <input
+                type="text"
+                placeholder="Ketik pesan..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -909,9 +909,9 @@ export default function Ticket() {
                   }
                 }}
                 disabled={ticketStatus !== "submitted" || !ticketId || currentTicketDbStatus === 'done' || currentTicketDbStatus === 'cancelled'}
-                className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
-              <button 
+              <button
                 onClick={handleSendMessage}
                 disabled={ticketStatus !== "submitted" || !ticketId || !chatInput.trim() || currentTicketDbStatus === 'done' || currentTicketDbStatus === 'cancelled'}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white rounded-full p-2 h-10 w-10 flex items-center justify-center transition shrink-0"
@@ -933,7 +933,7 @@ export default function Ticket() {
             <div className="px-6 py-6 border-b border-gray-100 flex flex-col items-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-gray-800">Data Belum Lengkap!</h3>
@@ -1094,7 +1094,7 @@ export default function Ticket() {
                     type="text"
                     placeholder="Username admin"
                     value={adminLoginForm.username}
-                    onChange={(e) => { setAdminLoginForm(p => ({...p, username: e.target.value})); setAdminLoginError(''); }}
+                    onChange={(e) => { setAdminLoginForm(p => ({ ...p, username: e.target.value })); setAdminLoginError(''); }}
                     className="w-full border border-gray-200 bg-gray-50 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
                     autoFocus
                   />
@@ -1114,7 +1114,7 @@ export default function Ticket() {
                     type={showAdminPassword ? 'text' : 'password'}
                     placeholder="Password admin"
                     value={adminLoginForm.password}
-                    onChange={(e) => { setAdminLoginForm(p => ({...p, password: e.target.value})); setAdminLoginError(''); }}
+                    onChange={(e) => { setAdminLoginForm(p => ({ ...p, password: e.target.value })); setAdminLoginError(''); }}
                     className="w-full border border-gray-200 bg-gray-50 rounded-lg pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
                   />
                   <button

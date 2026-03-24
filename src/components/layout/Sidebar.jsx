@@ -14,7 +14,7 @@ export default function Sidebar({ isDarkMode, toggleTheme, onLogout }) {
   return (
     <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-colors duration-200">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-bold text-blue-600 dark:text-blue-400">IT Support App</h2>
+        <h2 className="text-xl font-bold text-blue-600 dark:text-blue-400">RAPB IT Support Center</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</p>
       </div>
       
