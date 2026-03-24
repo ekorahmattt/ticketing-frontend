@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE, apiHeaders } from '../../utils/api';
@@ -25,6 +25,17 @@ export default function TicketDetail() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [updateSuccessMsg, setUpdateSuccessMsg] = useState("");
+
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -67,9 +78,24 @@ export default function TicketDetail() {
     setSubCategorySearchQuery("");
   };
 
+  const fetchMessages = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/${id}/messages`, {
+        headers: apiHeaders(user)
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setMessages(data.data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchTicketDetail();
     fetchAdmins();
+    fetchMessages();
 
     // Fetch Categories & Subcategories
     Promise.all([
@@ -91,6 +117,7 @@ export default function TicketDetail() {
     }).catch(console.error);
 
     const socket = io('http://localhost:3001');
+    socketRef.current = socket;
 
     socket.on('ticketUpdated', (payload) => {
       // Refresh detail when ticket is updated
@@ -101,10 +128,38 @@ export default function TicketDetail() {
       }
     });
 
+    socket.on('newMessage', (payload) => {
+      if (String(payload?.ticket_id) === String(id)) {
+        fetchMessages();
+      }
+    });
+
     return () => {
       socket.disconnect();
+      socketRef.current = null;
     };
   }, [id, user]);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !user) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/${id}/messages/send`, {
+        method: 'POST',
+        headers: apiHeaders(user),
+        body: JSON.stringify({ sender_type: 'admin', sender_id: user.id || user.user_id, message: chatInput })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setChatInput('');
+        if (socketRef.current) {
+          socketRef.current.emit('newMessage', { ticket_id: id });
+        }
+        fetchMessages();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchTicketDetail = async () => {
     try {
@@ -482,18 +537,68 @@ export default function TicketDetail() {
             </form>
         </div>
 
-        {/* Kolom Kanan - Chat Placeholder */}
+        {/* Kolom Kanan - Chat */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 flex flex-col h-[600px] lg:h-auto lg:col-span-1">
             <div className="border-b border-gray-100 dark:border-gray-800 pb-3 mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Direct Message</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Chat ke Pelapor (Not implemented yet)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Chat ke Pelapor</p>
               </div>
-              <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             </div>
             
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar flex items-center justify-center">
-                 <p className="text-xs text-gray-400">Belum ada fitur pesan pada versi ini.</p>
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+              {messages.length > 0 ? (
+                 messages.map((msg, idx) => {
+                   const isAdmin = msg.sender_type === 'admin';
+                   const timeMatch = msg.created_at.match(/ (\d{2}:\d{2})/);
+                   const timeFormatted = timeMatch ? timeMatch[1] + ' WIB' : '';
+                   return (
+                     <div key={idx} className={`flex flex-col gap-1 max-w-[90%] ${isAdmin ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
+                       <div className={`p-3 text-sm ${isAdmin ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-tl-none'}`}>
+                         {msg.message}
+                       </div>
+                       <span className={`text-[10px] text-gray-400 ${isAdmin ? 'mr-1' : 'ml-1'}`}>
+                         {isAdmin ? 'Anda' : (msg.sender_type === 'device' ? 'Pelapor (Device)' : 'Pelapor')} • {timeFormatted}
+                       </span>
+                     </div>
+                   );
+                 })
+               ) : (
+                 <div className="flex flex-col gap-1 items-start max-w-[90%]">
+                   <div className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-3 rounded-2xl rounded-tl-none text-sm">
+                     Belum ada obrolan dengan pelapor.
+                   </div>
+                   <span className="text-[10px] text-gray-400 ml-1">Sistem • Otomatis</span>
+                 </div>
+               )}
+               <div ref={messagesEndRef} />
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Ketik pesan..." 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={statusInput === 'cancelled'}
+                className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 dark:disabled:bg-gray-900 disabled:cursor-not-allowed transition" 
+              />
+              <button 
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim() || statusInput === 'cancelled'}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-full p-2 h-10 w-10 flex items-center justify-center transition shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-1">
+                  <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                </svg>
+              </button>
             </div>
         </div>
 

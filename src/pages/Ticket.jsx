@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -98,10 +98,30 @@ export default function Ticket() {
 
   const ticketId = ticketData?.id;
 
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   useEffect(() => {
     let socket;
     if (ticketStatus === "submitted" && ticketId) {
+      fetch(`${API_BASE}/api/tickets/${ticketId}/messages`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            setMessages(data.data || []);
+          }
+        }).catch(err => console.error(err));
+
       socket = io('http://localhost:3001');
+      socketRef.current = socket;
       socket.on('ticketUpdated', async (payload) => {
         if (payload?.data && String(payload.data.ticket_id) === String(ticketId)) {
           if (payload.data.new_status) {
@@ -123,11 +143,52 @@ export default function Ticket() {
           }
         }
       });
+
+      socket.on('newMessage', (payload) => {
+        if (String(payload?.ticket_id) === String(ticketId)) {
+          fetch(`${API_BASE}/api/tickets/${ticketId}/messages`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                setMessages(data.data || []);
+              }
+            });
+        }
+      });
     }
     return () => {
       if (socket) socket.disconnect();
+      socketRef.current = null;
     };
   }, [ticketStatus, ticketId]);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !ticketId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/${ticketId}/messages/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender_type: 'device', message: chatInput })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setChatInput('');
+        if (socketRef.current) {
+          socketRef.current.emit('newMessage', { ticket_id: ticketId });
+        }
+        // Fetch to update instantly on sender
+        fetch(`${API_BASE}/api/tickets/${ticketId}/messages`)
+          .then(r => r.json())
+          .then(d => {
+            if (d.status === 'success') {
+              setMessages(d.data || []);
+            }
+          });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // --- State untuk Modal Validasi ---
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
@@ -194,6 +255,9 @@ export default function Ticket() {
             hostname: dev.hostname || dev.device_name || '-',
             ip_address: dev.ip_address || '-',
             unit: dev.unit || '-',
+            name: dev.users && dev.users.length > 0 ? dev.users[0].name : '',
+            device_brand: dev.device_brand || '',
+            device_model: dev.device_model || '',
             detection_mode: 'LAN'
           }));
         }
@@ -341,7 +405,8 @@ export default function Ticket() {
           waktuText: formatDateTime(dString),
           waktuRaw: dString,
           slaText: slaTextValue,
-          perangkatText: `${user.hostname || "-"} (${[user.device_brand, user.device_model].filter(Boolean).join(" ") || "-"})`
+          perangkatText: `${user.hostname || "-"} (${[user.device_brand, user.device_model].filter(Boolean).join(" ") || "-"})`,
+          screenshotUrl: json.data?.attachment_path ? `${API_BASE.replace(/\/index\.php$/, '')}${json.data.attachment_path}` : null
         });
         setCurrentTicketDbStatus("open");
         setTicketStatus("submitted");
@@ -656,6 +721,16 @@ export default function Ticket() {
                     accept="image/*"
                     className="w-full border rounded-lg p-2" 
                   />
+                  {screenshot && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Preview Foto:</p>
+                      <img 
+                        src={URL.createObjectURL(screenshot)} 
+                        alt="Preview" 
+                        className="max-h-48 rounded border shadow-sm object-contain" 
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* SLA */}
@@ -760,6 +835,17 @@ export default function Ticket() {
                   </div>
                 </div>
 
+                {ticketData.screenshotUrl && (
+                  <div className="mb-6 text-left border rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 border-b">
+                      <h2 className="text-sm font-semibold text-gray-700">Lampiran Foto</h2>
+                    </div>
+                    <div className="p-4 bg-white flex justify-center">
+                      <img src={ticketData.screenshotUrl} alt="Screenshot" className="max-h-64 rounded border shadow-sm object-contain" />
+                    </div>
+                  </div>
+                )}
+
                 {/* Timeline Status - Tampil di Desktop & Mobile */}
                 <div className="border-t pt-6 mb-6 text-left">
                   <h2 className="text-lg font-semibold text-gray-700 mb-4">Timeline Status</h2>
@@ -816,7 +902,7 @@ export default function Ticket() {
           </div>
 
           {/* ================= DIRECT MESSAGE PANEL ================= */}
-          <div className="bg-white rounded-2xl shadow p-6 flex flex-col h-[500px] lg:h-[700px] lg:h-auto">
+          <div className="bg-white rounded-2xl shadow p-6 flex flex-col h-[500px] lg:h-[700px] lg:h-auto z-10">
             <div className="border-b pb-4 mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Direct Message</h2>
@@ -826,17 +912,53 @@ export default function Ticket() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-              <div className="flex flex-col gap-1 items-start max-w-[85%]">
-                <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm">
-                  Halo! Ada yang bisa kami bantu terkait laporan Anda?
-                </div>
-                <span className="text-[10px] text-gray-400 ml-1">IT Support • 09:20 WIB</span>
-              </div>
+              {messages.length > 0 ? (
+                 messages.map((msg, idx) => {
+                   const isMine = msg.sender_type === 'device' || msg.sender_type === 'user';
+                   const timeMatch = msg.created_at.match(/ (\d{2}:\d{2})/);
+                   const timeFormatted = timeMatch ? timeMatch[1] + ' WIB' : '';
+                   return (
+                     <div key={idx} className={`flex flex-col gap-1 max-w-[85%] ${isMine ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
+                       <div className={`p-3 text-sm ${isMine ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'}`}>
+                         {msg.message}
+                       </div>
+                       <span className={`text-[10px] text-gray-400 ${isMine ? 'mr-1' : 'ml-1'}`}>
+                         {isMine ? 'Anda' : (msg.sender_name || 'IT Support')} • {timeFormatted}
+                       </span>
+                     </div>
+                   );
+                 })
+               ) : (
+                 <div className="flex flex-col gap-1 items-start max-w-[85%]">
+                   <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm">
+                     Halo! Ada yang bisa kami bantu terkait laporan Anda?
+                   </div>
+                   <span className="text-[10px] text-gray-400 ml-1">IT Support • Otomatis</span>
+                 </div>
+               )}
+               <div ref={messagesEndRef} />
             </div>
 
             <div className="mt-4 pt-4 border-t flex gap-2">
-              <input type="text" placeholder="Ketik pesan..." className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 h-10 w-10 flex items-center justify-center transition shrink-0">
+              <input 
+                type="text" 
+                placeholder="Ketik pesan..." 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={ticketStatus !== "submitted" || !ticketId || currentTicketDbStatus === 'done' || currentTicketDbStatus === 'cancelled'}
+                className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+              />
+              <button 
+                onClick={handleSendMessage}
+                disabled={ticketStatus !== "submitted" || !ticketId || !chatInput.trim() || currentTicketDbStatus === 'done' || currentTicketDbStatus === 'cancelled'}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white rounded-full p-2 h-10 w-10 flex items-center justify-center transition shrink-0"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-1">
                   <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
                 </svg>
