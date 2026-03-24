@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext';
 import { apiHeaders, API_BASE } from '../../utils/api';
 
-const EMPTY_FORM = { category_id: '', name: '', sla_minutes: '' };
+const EMPTY_FORM = { category_id: '', name: '' };
 
 // ─── Badge Kategori ───────────────────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -17,15 +17,6 @@ const CATEGORY_COLORS = [
 
 function categoryColor(id) {
   return CATEGORY_COLORS[(id - 1) % CATEGORY_COLORS.length];
-}
-
-// ─── SLA Badge ────────────────────────────────────────────────────────────────
-function SlaBadge({ minutes }) {
-  if (!minutes) return <span className="text-gray-400 dark:text-gray-600 text-xs italic">—</span>;
-  if (minutes <= 15) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">⚡ {minutes} mnt</span>;
-  if (minutes <= 30) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">🔥 {minutes} mnt</span>;
-  if (minutes <= 60) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">⏱ {minutes} mnt</span>;
-  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">🕐 {minutes} mnt</span>;
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -201,25 +192,7 @@ function FormModal({ title, iconColor, form, errors, saving, categories, onChang
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
           </div>
 
-          {/* SLA */}
-          <div>
-            <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              SLA <span className="text-xs font-normal text-gray-400">(menit, opsional)</span>
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                min="1"
-                max="9999"
-                placeholder="Contoh: 60"
-                value={form.sla_minutes}
-                onChange={e => onChange('sla_minutes', e.target.value)}
-                className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 pr-16 outline-none focus:ring-2 focus:ring-violet-500 transition"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">menit</span>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Batas waktu penanganan berdasarkan SLA. Kosongkan jika tidak ada batas.</p>
-          </div>
+
         </div>
 
         {/* Footer */}
@@ -282,10 +255,7 @@ function DetailModal({ item, onClose, onEdit }) {
                 {item.category_name || '—'}
               </span>
             </div>
-            <div className="p-3.5 bg-gray-50 dark:bg-gray-800 rounded-xl">
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">SLA</p>
-              <SlaBadge minutes={item.sla_minutes} />
-            </div>
+
           </div>
 
           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -396,7 +366,7 @@ export default function SubCategories() {
       const res = await fetch(`${API_BASE}/api/subcategories`, {
         method: 'POST',
         headers: apiHeaders(authUser),
-        body: JSON.stringify({ ...addForm, sla_minutes: addForm.sla_minutes || null }),
+        body: JSON.stringify(addForm),
       });
       const json = await res.json();
       if (res.ok && json.status === 'success') {
@@ -414,7 +384,7 @@ export default function SubCategories() {
   const openEdit = (item) => {
     setViewTarget(null);
     setEditTarget(item);
-    setEditForm({ category_id: String(item.category_id || ''), name: item.name || '', sla_minutes: item.sla_minutes || '' });
+    setEditForm({ category_id: String(item.category_id || ''), name: item.name || '' });
     setEditErrors({});
   };
 
@@ -433,7 +403,7 @@ export default function SubCategories() {
       const res = await fetch(`${API_BASE}/api/subcategories/${editTarget.id}`, {
         method: 'PUT',
         headers: apiHeaders(authUser),
-        body: JSON.stringify({ ...editForm, sla_minutes: editForm.sla_minutes || null }),
+        body: JSON.stringify(editForm),
       });
       const json = await res.json();
       if (res.ok && json.status === 'success') {
@@ -521,32 +491,6 @@ export default function SubCategories() {
               <p className="text-xs text-gray-500 dark:text-gray-400">Kategori Tersedia</p>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {items.filter(i => i.sla_minutes && i.sla_minutes <= 15).length}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">SLA Kritis (≤15 mnt)</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {items.filter(i => !i.sla_minutes).length}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Tanpa SLA</p>
-            </div>
-          </div>
         </div>
       )}
 
@@ -631,7 +575,7 @@ export default function SubCategories() {
                     <tr className="border-b border-gray-50 dark:border-gray-800">
                       <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8">#</th>
                       <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Jenis Gangguan</th>
-                      <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">SLA</th>
+
                       <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
@@ -644,9 +588,7 @@ export default function SubCategories() {
                             {item.name}
                           </span>
                         </td>
-                        <td className="py-3.5 px-6">
-                          <SlaBadge minutes={item.sla_minutes} />
-                        </td>
+
                         <td className="py-3.5 px-6">
                           <div className="flex gap-2">
                             <button

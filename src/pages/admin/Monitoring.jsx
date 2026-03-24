@@ -34,6 +34,11 @@ export default function Monitoring() {
   const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Data Table Filter States
+  const [filterStatus, setFilterStatus] = useState('Semua Status');
+  const [filterUnit, setFilterUnit] = useState('Semua Unit');
+  const [searchTableQuery, setSearchTableQuery] = useState('');
+
   const filteredNames = useMemo(() => {
     const uniqueNames = Array.from(new Set(rawEmployees.map(emp => emp.full_name || emp.name).filter(Boolean)));
     return uniqueNames.filter(name => name.toLowerCase().includes(nameSearchQuery.toLowerCase()));
@@ -208,6 +213,54 @@ export default function Monitoring() {
     return datetimeStr.split(' ')[1]?.substring(0, 5) || '-';
   };
 
+  const displayTickets = ticketsToday.filter(t => {
+    // Status Filter
+    let matchStatus = true;
+    if (filterStatus === 'Open') matchStatus = t.status === 'baru' || t.status === 'open';
+    else if (filterStatus === 'Diproses') matchStatus = t.status === 'proses' || t.status === 'process';
+    else if (filterStatus === 'Selesai') matchStatus = t.status === 'selesai' || t.status === 'done';
+    
+    // Unit Filter
+    let matchUnit = true;
+    if (filterUnit !== 'Semua Unit') {
+      matchUnit = t.reporter_unit?.toLowerCase() === filterUnit.toLowerCase();
+    }
+
+    // Search Query
+    let matchSearch = true;
+    if (searchTableQuery) {
+      const q = searchTableQuery.toLowerCase();
+      matchSearch = 
+        (t.reporter_name && t.reporter_name.toLowerCase().includes(q)) ||
+        (t.id && String(t.id).includes(q));
+    }
+
+    return matchStatus && matchUnit && matchSearch;
+  }).sort((a, b) => {
+    // Urutan prioritas status
+    const getStatusRank = (status) => {
+      const s = status?.toLowerCase();
+      if (s === 'baru' || s === 'open') return 1;
+      if (s === 'proses' || s === 'process' || s === 'diproses') return 2;
+      if (s === 'selesai' || s === 'done') return 3;
+      return 4;
+    };
+
+    const rankA = getStatusRank(a.status);
+    const rankB = getStatusRank(b.status);
+
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    // Jika status sama, urutkan berdasarkan waktu (terbaru di atas)
+    const timeA = a.created_at || "";
+    const timeB = b.created_at || "";
+    return timeB.localeCompare(timeA);
+  });
+
+  const availableUnits = ['Semua Unit', ...new Set(ticketsToday.map(t => t.reporter_unit).filter(Boolean))];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -229,7 +282,11 @@ export default function Monitoring() {
           </div>
           <div className="flex flex-wrap gap-2 w-full xl:w-auto">
             {/* Filter Status */}
-            <select className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none">
+            <select 
+              className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
               <option>Semua Status</option>
               <option>Open</option>
               <option>Diproses</option>
@@ -237,11 +294,14 @@ export default function Monitoring() {
             </select>
 
             {/* Filter Unit */}
-            <select className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none">
-              <option>Semua Unit</option>
-              <option>IGD</option>
-              <option>Farmasi</option>
-              <option>Poli Anak</option>
+            <select 
+              className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
+              value={filterUnit}
+              onChange={(e) => setFilterUnit(e.target.value)}
+            >
+              {availableUnits.map((unit, idx) => (
+                <option key={idx} value={unit}>{unit}</option>
+              ))}
             </select>
 
             {/* Search Bar */}
@@ -249,6 +309,8 @@ export default function Monitoring() {
               <input
                 type="text"
                 placeholder="Cari pelapor / ID..."
+                value={searchTableQuery}
+                onChange={(e) => setSearchTableQuery(e.target.value)}
                 className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
               />
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -274,9 +336,11 @@ export default function Monitoring() {
             <div className="p-6 text-center text-gray-500">Memuat data...</div>
           ) : ticketsToday.length === 0 ? (
             <div className="p-6 text-center text-gray-500">Belum ada laporan hari ini.</div>
+          ) : displayTickets.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">Tidak ada laporan yang sesuai filter.</div>
           ) : (
-            <Table headers={["ID Laporan", "Waktu", "Unit / Lokasi", "Jenis Gangguan", "Status", "Prioritas", "Teknisi"]} >
-              {ticketsToday.map((item, i) => (
+            <Table headers={["ID Laporan", "Waktu", "Pelapor", "Unit / Lokasi", "Jenis Gangguan", "Status", "Teknisi"]} >
+              {displayTickets.map((item, i) => (
                 <tr
                   key={i}
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
@@ -284,10 +348,10 @@ export default function Monitoring() {
                 >
                   <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">TCK-{item.id}</td>
                   <td className="py-4 px-6">{getFormatTime(item.created_at)}</td>
+                  <td className="py-4 px-6 font-medium text-gray-800 dark:text-gray-200">{item.reporter_name || '-'}</td>
                   <td className="py-4 px-6">{item.reporter_unit || '-'}</td>
                   <td className="py-4 px-6">{item.subcategory || item.category || '-'}</td>
                   <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
-                  <td className="py-4 px-6">Normal</td>
                   <td className="py-4 px-6">{item.teknisi || '-'}</td>
                 </tr>
               ))}

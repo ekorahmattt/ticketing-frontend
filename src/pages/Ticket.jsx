@@ -305,36 +305,6 @@ export default function Ticket() {
     );
   }, [subcategories, subCategorySearchQuery]);
 
-  const slaInfo = useMemo(() => {
-    if (selectedSubCategory) {
-      const sub = subcategories.find(s => s.name === selectedSubCategory);
-      return sub && typeof sub.sla_minutes === 'number' ? `Estimasi respon: ${sub.sla_minutes} menit.` : "Estimasi respon: -";
-    } else if (subcategories.length > 0) {
-      const minutes = subcategories.map(s => s.sla_minutes).filter(x => typeof x === "number");
-      if (minutes.length) {
-        const min = Math.min(...minutes);
-        const max = Math.max(...minutes);
-        return `Estimasi respon: ${min} - ${max} menit.`;
-      }
-    }
-    return "Estimasi respon: -";
-  }, [selectedSubCategory, subcategories]);
-
-  const slaTextValue = useMemo(() => {
-    if (selectedSubCategory) {
-      const sub = subcategories.find(s => s.name === selectedSubCategory);
-      return sub && typeof sub.sla_minutes === 'number' ? `${sub.sla_minutes} menit` : "-";
-    }
-    if (subcategories.length > 0) {
-      const minutes = subcategories.map(s => s.sla_minutes).filter(x => typeof x === "number");
-      if (minutes.length) {
-        const min = Math.min(...minutes);
-        const max = Math.max(...minutes);
-        return `${min} - ${max} menit`;
-      }
-    }
-    return "-";
-  }, [selectedSubCategory, subcategories]);
 
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value);
@@ -404,7 +374,6 @@ export default function Ticket() {
           unitText: user.unit || "-",
           waktuText: formatDateTime(dString),
           waktuRaw: dString,
-          slaText: slaTextValue,
           perangkatText: `${user.hostname || "-"} (${[user.device_brand, user.device_model].filter(Boolean).join(" ") || "-"})`,
           screenshotUrl: json.data?.attachment_path ? `${API_BASE.replace(/\/index\.php$/, '')}${json.data.attachment_path}` : null
         });
@@ -733,10 +702,6 @@ export default function Ticket() {
                   )}
                 </div>
 
-                {/* SLA */}
-                <div className="bg-blue-50 p-4 rounded-lg mb-6 text-sm text-blue-700">
-                  {slaInfo}
-                </div>
 
                 {/* Tombol */}
                 <div className="flex flex-col-reverse lg:flex-row justify-end gap-3 mt-auto pt-4">
@@ -805,10 +770,6 @@ export default function Ticket() {
                       <p className="font-medium">{ticketData.waktuText}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Estimasi Respon</p>
-                      <p className="font-medium text-blue-600">{ticketData.slaText}</p>
-                    </div>
-                    <div>
                       <p className="text-gray-500">Perangkat</p>
                       <p className="font-medium">{ticketData.perangkatText}</p>
                     </div>
@@ -828,10 +789,6 @@ export default function Ticket() {
                   <div>
                     <p className="text-xs text-gray-500 block">Kategori</p>
                     <p className="font-medium text-gray-800">{ticketData.categoryText}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 block">Estimasi</p>
-                    <p className="font-medium text-blue-600">{ticketData.slaText}</p>
                   </div>
                 </div>
 

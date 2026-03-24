@@ -350,6 +350,10 @@ export default function TicketDetail() {
                   <input type="text" readOnly value={ticket.report_ip || ticket.ip_address || '-'} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow" />
                 </div>
                 <div>
+                  <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Remote Address</label>
+                  <input type="text" readOnly value={ticket.remote_address || '-'} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow" />
+                </div>
+                <div>
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Brand & Model Device</label>
                   <input type="text" readOnly value={`${ticket.report_device_brand || ticket.device_name || ''} ${ticket.report_device_model || ''}`} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow" />
                 </div>
@@ -498,18 +502,6 @@ export default function TicketDetail() {
                             <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
                          ))}
                       </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                       <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Prioritas & SLA Responses</label>
-                       <select className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none">
-                          <option>Normal</option>
-                          <option>Tinggi - 30 Menit</option>
-                          <option>Sedang - 60 Menit</option>
-                          <option>Rendah - 120 Menit</option>
-                       </select>
                     </div>
                   </div>
 
