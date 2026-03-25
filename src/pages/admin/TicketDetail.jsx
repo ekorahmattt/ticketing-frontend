@@ -25,6 +25,7 @@ export default function TicketDetail() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [updateSuccessMsg, setUpdateSuccessMsg] = useState("");
+  const [actionTakenInput, setActionTakenInput] = useState("");
 
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
@@ -188,6 +189,7 @@ export default function TicketDetail() {
         });
         setSelectedCategory(d.category || '');
         setSelectedSubCategory(d.subcategory || '');
+        setActionTakenInput(d.action_taken || '');
       }
     } catch (err) {
       console.error(err);
@@ -219,7 +221,8 @@ export default function TicketDetail() {
       const payload = {
         handled_by: handledByInput || null,
         reporter_name: reporter.name,
-        reporter_unit: reporter.unit
+        reporter_unit: reporter.unit,
+        action_taken: actionTakenInput || null
       };
 
       const catObj = categories.find(c => c.category_name === selectedCategory);
@@ -507,7 +510,13 @@ export default function TicketDetail() {
 
                   <div>
                      <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Tindakan Khusus(Opsional)</label>
-                     <textarea rows="2" className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Tindakan yang telah atau akan dilakukan..."></textarea>
+                     <textarea 
+                        rows="2" 
+                        value={actionTakenInput}
+                        onChange={(e) => setActionTakenInput(e.target.value)}
+                        className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                        placeholder="Tindakan yang telah atau akan dilakukan..."
+                     ></textarea>
                   </div>
 
                   <div className="flex justify-between items-center pt-2">
