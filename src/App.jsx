@@ -16,7 +16,7 @@ import DeviceDetails from './pages/admin/DeviceDetails'
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename="/ticketing/">
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Ticket />} />
