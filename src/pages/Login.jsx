@@ -49,7 +49,7 @@ export default function Login() {
       const json = await res.json();
 
       if (res.ok && json.status === 'success') {
-        // Simpan data user via AuthContext (ke localStorage)
+        // Simpan data user via AuthContext (ke sessionStorage)
         login(json.data);
         const from = location.state?.from?.pathname || '/admin';
         navigate(from, { replace: true });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
@@ -34,16 +34,37 @@ export default function AdminLayout() {
     });
   };
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
-      // Beri tahu backend (best-effort, tidak blocking)
-      await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
+      // Best-effort backend notification (use beacon for browser closing)
+      if (typeof navigator.sendBeacon === 'function') {
+        navigator.sendBeacon(`${API_BASE}/api/auth/logout`);
+      } else {
+        await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
+      }
     } catch {
-      // Abaikan error jaringan — logout lokal tetap dijalankan
+      // Ignored
     }
     logout();
     navigate('/login', { replace: true });
-  };
+  }, [logout, navigate]);
+
+  // Logout otomatis saat tab/browser ditutup atau navigasi keluar dari admin
+  useEffect(() => {
+    const handleUnload = () => {
+      // Gunakan beacon agar tetap terkirim saat tab ditutup
+      navigator.sendBeacon(`${API_BASE}/api/auth/logout`);
+      logout();
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      // Opsi: logout saat navigasi keluar dari route admin (misalnya ke halaman publik)
+      logout(); 
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [logout]);
 
   if (!isAuthenticated) return null;
 
