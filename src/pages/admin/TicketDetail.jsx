@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE, apiHeaders } from '../../utils/api';
+import { API_BASE, apiHeaders, SOCKET_URL } from '../../utils/api';
 import { io } from 'socket.io-client';
 
 export default function TicketDetail() {
@@ -117,7 +117,7 @@ export default function TicketDetail() {
       }
     }).catch(console.error);
 
-    const socket = io('http://localhost:3001');
+    const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
     socket.on('ticketUpdated', (payload) => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-import { API_BASE } from '../utils/api';
+import { API_BASE, SOCKET_URL } from '../utils/api';
 import { io } from 'socket.io-client';
 
 const DEFAULT_USER = {
@@ -120,7 +120,7 @@ export default function Ticket() {
           }
         }).catch(err => console.error(err));
 
-      socket = io('http://localhost:3001');
+      socket = io(SOCKET_URL);
       socketRef.current = socket;
       socket.on('ticketUpdated', async (payload) => {
         if (payload?.data && String(payload.data.ticket_id) === String(ticketId)) {

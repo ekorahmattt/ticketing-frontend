@@ -5,7 +5,7 @@ import ViewSwitcher from '../../components/feature-specific/ViewSwitcher';
 import Table from '../../components/ui/Table';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE, apiHeaders } from '../../utils/api';
+import { API_BASE, apiHeaders, SOCKET_URL } from '../../utils/api';
 import { io } from 'socket.io-client';
 import newTicketSound from '../../sounds/new ticket.mp3';
 
@@ -150,7 +150,7 @@ export default function Monitoring() {
   useEffect(() => {
     fetchTickets(true);
 
-    const socket = io('http://localhost:3001');
+    const socket = io(SOCKET_URL);
 
     socket.on('connect', () => {
       console.log('Connected to WebSocket server');

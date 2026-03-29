@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { API_BASE } from '../utils/api';
+import { API_BASE, SOCKET_URL } from '../utils/api';
 import newTicketSound from '../sounds/new ticket.mp3';
 
 const statusPriority = {
@@ -108,7 +108,7 @@ export default function Monitor() {
     useEffect(() => {
         fetchTickets();
 
-        const socket = io('http://localhost:3001');
+        const socket = io(SOCKET_URL);
         socket.on('ticketUpdated', (payload) => {
             let newId = null;
             if (payload?.event === 'ticket_created') {
