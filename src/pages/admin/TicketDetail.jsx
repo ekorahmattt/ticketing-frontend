@@ -293,6 +293,16 @@ export default function TicketDetail() {
     }
   };
 
+  const copyToClipboard = (text, label) => {
+    if (!text || text === '-') return;
+    navigator.clipboard.writeText(text).then(() => {
+      setUpdateSuccessMsg(`${label} berhasil disalin!`);
+      setTimeout(() => setUpdateSuccessMsg(""), 2000);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  };
+
   if (isLoading || !ticket) {
     return <div className="p-6 text-center text-gray-500 text-sm">Memuat data tiket...</div>;
   }
@@ -350,11 +360,25 @@ export default function TicketDetail() {
                 </div>
                 <div>
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">IP Address</label>
-                  <input type="text" readOnly value={ticket.report_ip || ticket.ip_address || '-'} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow" />
+                  <input
+                    type="text"
+                    readOnly
+                    value={ticket.report_ip || ticket.ip_address || '-'}
+                    onClick={() => copyToClipboard(ticket.report_ip || ticket.ip_address, 'IP Address')}
+                    title="Klik untuk salin"
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  />
                 </div>
                 <div>
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Remote Address</label>
-                  <input type="text" readOnly value={ticket.remote_address || '-'} className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow" />
+                  <input
+                    type="text"
+                    readOnly
+                    value={ticket.remote_address || '-'}
+                    onClick={() => copyToClipboard(ticket.remote_address, 'Remote Address')}
+                    title="Klik untuk salin"
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2 outline-none transition-shadow cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  />
                 </div>
                 <div>
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Brand & Model Device</label>
