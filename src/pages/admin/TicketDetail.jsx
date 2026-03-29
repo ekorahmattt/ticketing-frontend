@@ -25,6 +25,7 @@ export default function TicketDetail() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [updateSuccessMsg, setUpdateSuccessMsg] = useState("");
+  const [copySuccessMsg, setCopySuccessMsg] = useState("");
   const [actionTakenInput, setActionTakenInput] = useState("");
 
   const [messages, setMessages] = useState([]);
@@ -296,8 +297,8 @@ export default function TicketDetail() {
   const copyToClipboard = (text, label) => {
     if (!text || text === '-') return;
     navigator.clipboard.writeText(text).then(() => {
-      setUpdateSuccessMsg(`${label} berhasil disalin!`);
-      setTimeout(() => setUpdateSuccessMsg(""), 2000);
+      setCopySuccessMsg(`${label} disalin!`);
+      setTimeout(() => setCopySuccessMsg(""), 2000);
     }).catch(err => {
       console.error('Failed to copy: ', err);
     });
@@ -316,6 +317,16 @@ export default function TicketDetail() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="font-semibold">{updateSuccessMsg}</span>
+        </div>
+      )}
+
+      {/* Copy Success Toast */}
+      {copySuccessMsg && (
+        <div className="fixed top-20 right-4 z-[100] bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-lg flex items-center gap-2 transition-all duration-300 animate-fade-in border border-blue-400">
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+           </svg>
+           <span className="text-sm font-bold">{copySuccessMsg}</span>
         </div>
       )}
 
