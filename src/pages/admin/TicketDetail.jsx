@@ -183,7 +183,8 @@ export default function TicketDetail() {
         if (d.status === 'canceled' || d.status === 'batal' || d.status === 'cancelled') initialStatus = 'cancelled';
 
         setStatusInput(initialStatus);
-        setHandledByInput(d.handled_by || '');
+        // Auto-fill handledBy with current user if empty
+        setHandledByInput(d.handled_by || user?.id || user?.user_id || '');
         setReporter({
           name: d.reporter_name || "",
           unit: d.reporter_unit || ""

@@ -148,47 +148,83 @@ export default function Dashboard() {
   const availableUnits = [...new Set(tickets.map(t => t.reporter_unit).filter(Boolean))].sort();
   const availableCategories = [...new Set(tickets.map(t => t.category).filter(Boolean))].sort();
 
-  const exportToXLSX = () => {
-    if (filteredTickets.length === 0) {
-      alert("Tidak ada data untuk diexport!");
-      return;
+  const exportToXLSX = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (dateStart) params.append('start_date', dateStart);
+      if (dateEnd) params.append('end_date', dateEnd);
+      if (filterUnit !== 'Semua Unit') params.append('unit', filterUnit);
+      if (filterCategory !== 'Semua Kategori') params.append('category', filterCategory);
+      if (filterStatus !== 'Semua Status') params.append('status', filterStatus);
+      if (searchQuery) params.append('search', searchQuery);
+
+      const res = await fetch(`${API_BASE}/api/tickets/export?${params.toString()}`, {
+        headers: apiHeaders(user)
+      });
+      const resData = await res.json();
+      
+      if (resData.status !== 'success') {
+        alert("Gagal mengambil data untuk export: " + (resData.message || 'Error occurred'));
+        return;
+      }
+
+      const ticketsToExport = resData.data || [];
+      if (ticketsToExport.length === 0) {
+        alert("Tidak ada data untuk diexport!");
+        return;
+      }
+
+      const dataToExport = ticketsToExport.map(t => {
+        const createdAt = t.created_at || '';
+        const [date, time] = createdAt.includes(' ') ? createdAt.split(' ') : [createdAt, '-'];
+        
+        // Map status logic
+        let statusLabel = t.status || '-';
+        const s = t.status?.toLowerCase() || '';
+        if (s === 'baru' || s === 'open') statusLabel = 'Open';
+        else if (s === 'proses' || s === 'process' || s === 'diproses') statusLabel = 'Diproses';
+        else if (s === 'selesai' || s === 'done') statusLabel = 'Selesai';
+        else if (s === 'on_hold') statusLabel = 'On Hold';
+        else if (s === 'canceled' || s === 'cancelled') statusLabel = 'Canceled';
+
+        return {
+          'ID Laporan': `TCK-${t.id}`,
+          'Tanggal Laporan': date,
+          'Waktu': time.substring(0, 8),
+          'Kategori': t.category || '-',
+          'Jenis Gangguan': t.subcategory || '-',
+          'Deskripsi': t.description || '-',
+          'Tindakan': t.action_taken || '-',
+          'Status': statusLabel,
+          'Teknisi': t.teknisi || '-',
+          'Unit': t.reporter_unit || '-',
+          'Pelapor': t.reporter_name || '-',
+          'Perangkat': t.report_hostname || '-'
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Tiket");
+
+      // Auto-size columns (optional but good)
+      const maxWidths = {};
+      dataToExport.forEach(row => {
+          Object.keys(row).forEach(key => {
+              const val = row[key] ? row[key].toString() : '';
+              maxWidths[key] = Math.max(maxWidths[key] || 0, val.length, key.length);
+          });
+      });
+      worksheet['!cols'] = Object.keys(maxWidths).map(key => ({ wch: maxWidths[key] + 2 }));
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+      
+      saveAs(blob, `Laporan_Ticket_Filtered_${todayStr}.xlsx`);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Terjadi kesalahan saat mengekspor data.');
     }
-
-    const dataToExport = filteredTickets.map(t => ({
-      'ID': t.id,
-      'Device ID': t.device_id || '-',
-      'Reporter Name': t.reporter_name || '-',
-      'Reporter Unit': t.reporter_unit || '-',
-      'Reporter Contact': t.reporter_contact || '-',
-      'Hostname': t.report_hostname || '-',
-      'IP Address': t.report_ip || '-',
-      'Device Brand': t.report_device_brand || '-',
-      'Device Model': t.report_device_model || '-',
-      'User Agent': t.report_user_agent || '-',
-      'Title': t.title || '-',
-      'Description': t.description || '-',
-      'Action Taken': t.action_taken || '-',
-      'Handling Notes': t.handling_notes || '-',
-      'Status': t.status || '-',
-      'Priority': t.priority || '-',
-      'SLA (Minutes)': t.sla_response_minutes || '-',
-      'First Response At': t.first_response_at || '-',
-      'Handled By (UserID)': t.handled_by || '-',
-      'Created At': t.created_at || '-',
-      'Updated At': t.updated_at || '-',
-      'Resolved At': t.resolved_at || '-',
-      'Category ID': t.category_id || '-',
-      'Subcategory ID': t.subcategory_id || '-'
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Tickets");
-
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-    
-    saveAs(data, `Laporan_Ticket_Filtered_${todayStr}.xlsx`);
   };
 
   return (

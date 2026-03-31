@@ -60,11 +60,9 @@ export default function AdminLayout() {
     window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      // Opsi: logout saat navigasi keluar dari route admin (misalnya ke halaman publik)
-      logout(); 
       window.removeEventListener('beforeunload', handleUnload);
     };
-  }, [logout]);
+  }, []);
 
   if (!isAuthenticated) return null;
 
