@@ -6,6 +6,8 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE, apiHeaders } from '../../utils/api';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -146,32 +148,47 @@ export default function Dashboard() {
   const availableUnits = [...new Set(tickets.map(t => t.reporter_unit).filter(Boolean))].sort();
   const availableCategories = [...new Set(tickets.map(t => t.category).filter(Boolean))].sort();
 
-  const exportToCSV = () => {
+  const exportToXLSX = () => {
     if (filteredTickets.length === 0) {
       alert("Tidak ada data untuk diexport!");
       return;
     }
-    const headers = ["ID Laporan", "Kategori", "Jenis Gangguan", "Pelapor", "Unit", "Status", "Tgl Laporan"];
-    const rows = filteredTickets.map(item => [
-      `TCK-${item.id}`,
-      item.category || '-',
-      item.subcategory || '-',
-      item.reporter_name || '-',
-      item.reporter_unit || '-',
-      item.status || '-',
-      item.created_at || '-'
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8,"
-      + headers.join(",") + "\n"
-      + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Laporan_Ticket_${todayStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const dataToExport = filteredTickets.map(t => ({
+      'ID': t.id,
+      'Device ID': t.device_id || '-',
+      'Reporter Name': t.reporter_name || '-',
+      'Reporter Unit': t.reporter_unit || '-',
+      'Reporter Contact': t.reporter_contact || '-',
+      'Hostname': t.report_hostname || '-',
+      'IP Address': t.report_ip || '-',
+      'Device Brand': t.report_device_brand || '-',
+      'Device Model': t.report_device_model || '-',
+      'User Agent': t.report_user_agent || '-',
+      'Title': t.title || '-',
+      'Description': t.description || '-',
+      'Action Taken': t.action_taken || '-',
+      'Handling Notes': t.handling_notes || '-',
+      'Status': t.status || '-',
+      'Priority': t.priority || '-',
+      'SLA (Minutes)': t.sla_response_minutes || '-',
+      'First Response At': t.first_response_at || '-',
+      'Handled By (UserID)': t.handled_by || '-',
+      'Created At': t.created_at || '-',
+      'Updated At': t.updated_at || '-',
+      'Resolved At': t.resolved_at || '-',
+      'Category ID': t.category_id || '-',
+      'Subcategory ID': t.subcategory_id || '-'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Tickets");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+    
+    saveAs(data, `Laporan_Ticket_Filtered_${todayStr}.xlsx`);
   };
 
   return (
@@ -183,8 +200,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">Top 5 Unit Laporan Terbanyak</h3>
-          <div className="h-64 text-sm font-medium">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 min-h-[256px] w-full text-sm font-medium">
+            <ResponsiveContainer width="99%" height="100%">
               <BarChart data={unitData} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={80} />
@@ -197,8 +214,8 @@ export default function Dashboard() {
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">Top 5 Jenis Gangguan</h3>
-          <div className="h-64 text-sm font-medium">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 min-h-[256px] w-full text-sm font-medium">
+            <ResponsiveContainer width="99%" height="100%">
               <BarChart data={subCategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={100} />
@@ -211,8 +228,8 @@ export default function Dashboard() {
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1 text-center">Distribusi Kategori</h3>
-          <div className="h-60 text-sm font-bold">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-60 min-h-[240px] w-full text-sm font-bold">
+            <ResponsiveContainer width="99%" height="100%">
               <PieChart>
                 <Pie data={categoryDataPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} label>
                   {categoryDataPie.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -233,8 +250,8 @@ export default function Dashboard() {
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1 text-center">Rasio Status Laporan</h3>
-          <div className="h-60 text-sm font-bold">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-60 min-h-[240px] w-full text-sm font-bold">
+            <ResponsiveContainer width="99%" height="100%">
               <PieChart>
                 <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} label>
                   {statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -328,6 +345,17 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+
+            {/* Export Button */}
+            <button
+              onClick={exportToXLSX}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md shadow-green-900/20 active:scale-95"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export Excel
+            </button>
           </div>
         </div>
 
