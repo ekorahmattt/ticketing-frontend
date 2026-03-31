@@ -19,6 +19,12 @@ export default function TicketDetail() {
     unit: ""
   });
 
+  const [rawEmployees, setRawEmployees] = useState([]);
+  const [isNameDropdownOpen, setIsNameDropdownOpen] = useState(false);
+  const [nameSearchQuery, setNameSearchQuery] = useState("");
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const [unitSearchQuery, setUnitSearchQuery] = useState("");
+
   const [statusInput, setStatusInput] = useState('open');
   const [handledByInput, setHandledByInput] = useState('');
 
@@ -67,6 +73,32 @@ export default function TicketDetail() {
     );
   }, [subcategories, subCategorySearchQuery]);
 
+  const filteredNames = useMemo(() => {
+    const uniqueNames = Array.from(new Set(rawEmployees.map(emp => emp.full_name || emp.name).filter(Boolean)));
+    return uniqueNames.filter(name =>
+      name.toLowerCase().includes(nameSearchQuery.toLowerCase())
+    );
+  }, [nameSearchQuery, rawEmployees]);
+
+  const filteredUnits = useMemo(() => {
+    const uniqueUnits = Array.from(new Set(rawEmployees.map(emp => emp.unit_name).filter(Boolean)));
+    return uniqueUnits.filter(unit =>
+      unit.toLowerCase().includes(unitSearchQuery.toLowerCase())
+    );
+  }, [unitSearchQuery, rawEmployees]);
+
+  const handleSelectName = (name) => {
+    setReporter(prev => ({ ...prev, name }));
+    setIsNameDropdownOpen(false);
+    setNameSearchQuery("");
+  };
+
+  const handleSelectUnit = (unit) => {
+    setReporter(prev => ({ ...prev, unit }));
+    setIsUnitDropdownOpen(false);
+    setUnitSearchQuery("");
+  };
+
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value);
     setSelectedSubCategory("");
@@ -98,6 +130,7 @@ export default function TicketDetail() {
     fetchTicketDetail();
     fetchAdmins();
     fetchMessages();
+    fetchEmployees();
 
     // Fetch Categories & Subcategories
     Promise.all([
@@ -208,6 +241,20 @@ export default function TicketDetail() {
       const data = await res.json();
       if (data.status === 'success') {
         setAdmins(data.data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/device-users`, {
+        headers: apiHeaders(user)
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setRawEmployees(data.data || []);
       }
     } catch (err) {
       console.error(err);
@@ -383,23 +430,110 @@ export default function TicketDetail() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">Informasi Pelapor</h2>
             <div className="space-y-3 text-sm">
-                <div>
+                <div className="relative">
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Nama Pelapor</label>
-                  <input
-                    type="text"
-                    value={reporter.name}
-                    onChange={(e) => setReporter({...reporter, name: e.target.value})}
-                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                  />
+                  <div
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 transition-shadow cursor-pointer flex justify-between items-center group"
+                    onClick={() => setIsNameDropdownOpen(!isNameDropdownOpen)}
+                  >
+                    <span className={reporter.name ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}>
+                      {reporter.name || "-- Pilih Nama Pelapor --"}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 text-gray-400 transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isNameDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+
+                  {isNameDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                      <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                        <input
+                          type="text"
+                          placeholder="Cari nama..."
+                          className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                          value={nameSearchQuery}
+                          onChange={(e) => setNameSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (filteredNames.length > 0) {
+                                handleSelectName(filteredNames[0]);
+                              }
+                            }
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        {filteredNames.length > 0 ? (
+                          filteredNames.map((name, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
+                              onClick={() => handleSelectName(name)}
+                            >
+                              <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{name}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-sm text-gray-500 text-center">Nama tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
+
+                <div className="relative">
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Unit</label>
-                  <input
-                    type="text"
-                    value={reporter.unit}
-                    onChange={(e) => setReporter({...reporter, unit: e.target.value})}
-                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                  />
+                  <div
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 transition-shadow cursor-pointer flex justify-between items-center group"
+                    onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                  >
+                    <span className={reporter.unit ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}>
+                      {reporter.unit || "-- Pilih Unit --"}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 text-gray-400 transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isUnitDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+
+                  {isUnitDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
+                      <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                        <input
+                          type="text"
+                          placeholder="Cari unit..."
+                          className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                          value={unitSearchQuery}
+                          onChange={(e) => setUnitSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (filteredUnits.length > 0) {
+                                handleSelectUnit(filteredUnits[0]);
+                              }
+                            }
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        {filteredUnits.length > 0 ? (
+                          filteredUnits.map((unit, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
+                              onClick={() => handleSelectUnit(unit)}
+                            >
+                              <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{unit}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-sm text-gray-500 text-center">Unit tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-gray-600 dark:text-gray-400 mb-1 font-medium">Hostname</label>
