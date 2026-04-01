@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../../components/ui/StatCard';
 import ViewSwitcher from '../../components/feature-specific/ViewSwitcher';
@@ -8,6 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 import { API_BASE, apiHeaders, SOCKET_URL } from '../../utils/api';
 import { io } from 'socket.io-client';
 import newTicketSound from '../../sounds/new ticket.mp3';
+import denahLight from '../../maps/Denah RS.png';
+import denahDark from '../../maps/Denah RS Dark.png';
 
 export default function Monitoring() {
   const [view, setView] = useState('list');
@@ -16,6 +18,35 @@ export default function Monitoring() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  const mapContainerRef = useRef(null);
+  const mapWrapperRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const newTicket = tickets.find(t => t.isNew && t.coord_x != null && t.coord_y != null);
+    if (newTicket && mapContainerRef.current && mapWrapperRef.current && view === 'map') {
+      const container = mapContainerRef.current;
+      const wrapper = mapWrapperRef.current;
+
+      const targetX = (parseFloat(newTicket.coord_x) / 100) * wrapper.offsetWidth;
+      const targetY = (parseFloat(newTicket.coord_y) / 100) * wrapper.offsetHeight;
+
+      container.scrollTo({
+        left: targetX - container.offsetWidth / 2,
+        top: targetY - container.offsetHeight / 2,
+        behavior: 'smooth'
+      });
+    }
+  }, [tickets, view]);
 
   // === Modal Tambah Laporan States ===
   const [reportUser, setReportUser] = useState({ name: "", unit: "" });
@@ -130,7 +161,7 @@ export default function Monitoring() {
     }
   };
 
-  const fetchTickets = async (showLoading = true) => {
+  const fetchTickets = async (highlightNewId = null, showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
       const res = await fetch(`${API_BASE}/api/tickets`, {
@@ -138,7 +169,11 @@ export default function Monitoring() {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        setTickets(data.data || []);
+        const mappedData = (data.data || []).map(d => ({
+          ...d,
+          isNew: highlightNewId ? String(d.id) === String(highlightNewId) : false
+        }));
+        setTickets(mappedData);
       }
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
@@ -158,13 +193,15 @@ export default function Monitoring() {
 
     socket.on('ticketUpdated', (payload) => {
       console.log('WebSocket trigger received:', payload);
+      let newId = null;
       if (payload?.event === 'ticket_created') {
+        newId = payload?.data?.ticket_id;
         try {
           const audio = new Audio(newTicketSound);
           audio.play().catch(e => console.error("Audio block play failed:", e));
         } catch (err) {}
       }
-      fetchTickets(false);
+      fetchTickets(newId, false);
     });
 
     // Fetch Device Users
@@ -358,27 +395,51 @@ export default function Monitoring() {
             </Table>
           )
         ) : (
-          <div className="p-6 h-[500px] flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 relative">
-            <div className="absolute top-1/4 left-1/4 group cursor-pointer">
-              <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse relative z-10 shadow-lg"></div>
-              <div className="hidden group-hover:block absolute top-6 left-0 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-xl text-xs w-48 z-20 border border-gray-100 dark:border-gray-600">
-                <p className="font-bold mb-1 text-gray-800 dark:text-gray-100">Poli Gigi</p>
-                <p className="text-gray-500 dark:text-gray-300">Printer Macet</p>
-                <p className="text-red-500 font-semibold mt-1">Open</p>
-              </div>
-            </div>
+          <div className="flex-1 min-h-[600px] bg-gray-50 dark:bg-gray-800/50 relative overflow-auto scrollbar-hide border-t border-gray-100 dark:border-gray-800" ref={mapContainerRef}>
+            <div className="relative min-w-[2000px] shadow-inner" ref={mapWrapperRef}>
+              <img 
+                src={isDarkMode ? denahDark : denahLight} 
+                alt="Hospital Map" 
+                className="w-full h-auto block select-none pointer-events-none"
+              />
+              
+              <div className="absolute inset-0">
+                {ticketsToday.filter(t => (t.status === 'baru' || t.status === 'open') && t.coord_x != null && t.coord_y != null).map(t => (
+                  <div 
+                    key={t.id} 
+                    className="absolute group z-10"
+                    style={{ 
+                      left: `${t.coord_x}%`, 
+                      top: `${t.coord_y}%`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  >
+                    <div className="relative">
+                      {/* Ripple effect */}
+                      <div className="absolute inset-0 w-8 h-8 -m-2.5 rounded-full bg-red-500 animate-ping opacity-75"></div>
+                      
+                      {/* Point */}
+                      <div className={`w-5 h-5 rounded-full bg-red-500 border-4 border-white dark:border-gray-900 shadow-xl relative z-20 cursor-pointer ${t.isNew ? 'animate-bounce' : ''}`}>
+                      </div>
 
-            <div className="absolute top-1/2 left-2/3 group cursor-pointer">
-              <div className="w-4 h-4 rounded-full bg-yellow-400 relative z-10 shadow-lg"></div>
-              <div className="hidden group-hover:block absolute top-6 -left-20 bg-white dark:bg-gray-700 p-3 rounded-lg shadow-xl text-xs w-48 z-20 border border-gray-100 dark:border-gray-600">
-                <p className="font-bold mb-1 text-gray-800 dark:text-gray-100">Rekam Medis</p>
-                <p className="text-gray-500 dark:text-gray-300">Internet Mati</p>
-                <p className="text-yellow-600 font-semibold mt-1">Diproses</p>
+                      {/* Bubble Chat (Always Visible for Admin Monitoring) */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-60 z-30 transform -translate-y-1 transition-all duration-300">
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{t.reporter_unit || 'UNIT'}</span>
+                            <span className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 leading-tight">{t.title}</span>
+                            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-[10px]">
+                              <span className="text-gray-400 font-mono">TCK-{t.id}</span>
+                              <span className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded font-black uppercase">Live</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="w-3 h-3 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45 absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className="text-gray-400 dark:text-gray-500 font-medium text-xl opacity-50">
-              [ Peta Denah interaktif akan dirender di sini ]
             </div>
           </div>
         )}

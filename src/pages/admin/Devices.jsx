@@ -1,4 +1,6 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import denahLight from '../../maps/Denah RS.png';
+import denahDark from '../../maps/Denah RS Dark.png';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiHeaders, API_BASE } from '../../utils/api';
@@ -400,6 +402,15 @@ export default function Devices() {
   const navigate = useNavigate();
 
   const [view, setView] = useState('list');
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // ── Data State ───────────────────────────────────────────────────────────────
   const [devices, setDevices] = useState([]);
@@ -430,6 +441,30 @@ export default function Devices() {
   const [addForm, setAddForm] = useState(EMPTY_ADD_FORM);
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
+
+  // ── Map State ────────────────────────────────────────────────────────────────
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const mapWrapperRef = useRef(null);
+  const mapContainerRef = useRef(null);
+
+  const handleMapMouseMove = (e) => {
+    if (!mapWrapperRef.current) return;
+    const rect = mapWrapperRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setMousePos({ x: x.toFixed(2), y: y.toFixed(2) });
+  };
+
+  const handleMapClick = (e) => {
+    if (!mapWrapperRef.current) return;
+    const rect = mapWrapperRef.current.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    
+    setAddForm({ ...EMPTY_ADD_FORM, coordX: String(x), coordY: String(y) });
+    setAddError('');
+    setIsModalOpen(true);
+  };
 
 
 
@@ -953,10 +988,72 @@ export default function Devices() {
             )}
           </>
         ) : (
-          <div className="p-6 h-[500px] flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 relative overflow-hidden">
-            <div className="text-gray-400 dark:text-gray-500 font-medium text-xl opacity-50 text-center">
-              <p className="mb-2">[ Denah Pemetaan Perangkat ]</p>
-              <p className="text-sm font-normal">Klik pada denah untuk menambah perangkat baru.</p>
+          <div className="relative h-[650px] bg-gray-50 dark:bg-gray-800/50 overflow-auto scrollbar-hide border-t border-gray-100 dark:border-gray-800" ref={mapContainerRef}>
+            {/* Coordinate Panel */}
+            <div className="fixed bottom-10 right-10 z-[40] bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-blue-200 dark:border-blue-900/50 pointer-events-none transition-all duration-300">
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">Coord X</span>
+                  <span className="text-xl font-bold tabular-nums text-gray-800 dark:text-white">{mousePos.x}%</span>
+                </div>
+                <div className="w-[1px] h-8 bg-gray-200 dark:bg-gray-700"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">Coord Y</span>
+                  <span className="text-xl font-bold tabular-nums text-gray-800 dark:text-white">{mousePos.y}%</span>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500 font-medium">Geser kursor untuk melihat koordinat</p>
+            </div>
+
+            <div 
+              className="relative min-w-[2000px] cursor-crosshair group shadow-2xl" 
+              ref={mapWrapperRef}
+              onMouseMove={handleMapMouseMove}
+              onClick={handleMapClick}
+            >
+              <img 
+                src={isDarkMode ? denahDark : denahLight} 
+                alt="Hospital Map" 
+                className="w-full h-auto block select-none pointer-events-none"
+              />
+              
+              <div className="absolute inset-0">
+                {filteredDevices.filter(d => d.coordX != null && d.coordY != null).map(d => (
+                  <div 
+                    key={d.id} 
+                    className="absolute group/point z-10"
+                    style={{ 
+                      left: `${d.coordX}%`, 
+                      top: `${d.coordY}%`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  >
+                    <div className="relative">
+                      {/* Interactive Point */}
+                      <div className={`w-5 h-5 rounded-full border-4 border-white dark:border-gray-900 shadow-xl cursor-pointer transition-all duration-300 transform group-hover/point:scale-125
+                        ${d.status === 'Rusak' ? 'bg-red-500 shadow-red-500/50' : d.status === 'Aktif' ? 'bg-green-500 shadow-green-500/50' : 'bg-gray-400 shadow-gray-400/50'}`}
+                      />
+                      
+                      {/* Label Hover */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-40 opacity-0 group-hover/point:opacity-100 transition-all duration-300 pointer-events-none z-30 transform group-hover/point:-translate-y-1">
+                        <div className="bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 text-center">
+                          <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter truncate">{d.unit || 'NO UNIT'}</p>
+                          <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{d.hostname}</p>
+                          <p className="text-[9px] text-gray-400 mt-0.5">{d.ip || 'no ip'}</p>
+                        </div>
+                        <div className="w-2 h-2 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45 absolute -top-1 left-1/2 -translate-x-1/2"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Click Guide Overlay */}
+              <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.02] transition-colors pointer-events-none flex items-center justify-center">
+                 <div className="bg-blue-600/90 text-white px-6 py-2.5 rounded-full font-bold text-sm shadow-xl opacity-0 group-hover:opacity-100 transition-opacity translate-y-10 group-hover:translate-y-0">
+                    Klik untuk Menambah Perangkat di Sini
+                 </div>
+              </div>
             </div>
           </div>
         )}

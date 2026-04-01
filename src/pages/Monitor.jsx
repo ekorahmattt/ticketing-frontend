@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { API_BASE, SOCKET_URL } from '../utils/api';
 import newTicketSound from '../sounds/new ticket.mp3';
+import denahLight from '../maps/Denah RS.png';
+import denahDark from '../maps/Denah RS Dark.png';
 
 const statusPriority = {
     open: 0,
@@ -44,6 +46,26 @@ export default function Monitor() {
     const [timeString, setTimeString] = useState("");
     const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
+    const mapContainerRef = useRef(null);
+    const mapWrapperRef = useRef(null);
+
+    useEffect(() => {
+        const newTicket = tickets.find(t => t.isNew && t.coordX != null && t.coordY != null);
+        if (newTicket && mapContainerRef.current && mapWrapperRef.current) {
+            const container = mapContainerRef.current;
+            const wrapper = mapWrapperRef.current;
+
+            const targetX = (parseFloat(newTicket.coordX) / 100) * wrapper.offsetWidth;
+            const targetY = (parseFloat(newTicket.coordY) / 100) * wrapper.offsetHeight;
+
+            container.scrollTo({
+                left: targetX - container.offsetWidth / 2,
+                top: targetY - container.offsetHeight / 2,
+                behavior: 'smooth'
+            });
+        }
+    }, [tickets]);
+
     const fetchTickets = async (highlightNewDbId = null) => {
         try {
             const res = await fetch(`${API_BASE}/api/tickets`);
@@ -64,6 +86,9 @@ export default function Monitor() {
                         unit: d.reporter_unit || '-',
                         category: d.category || '-',
                         subcategory: d.subcategory || '-',
+                        title: d.title || '',
+                        coordX: d.coord_x,
+                        coordY: d.coord_y,
                         createdAt: new Date(d.created_at).getTime(),
                         createdAtStr: d.created_at,
                         isNew: String(d.id) === String(highlightNewDbId)
@@ -279,45 +304,49 @@ export default function Monitor() {
                             <h2 className="text-2xl font-bold tracking-tight text-gray-800 dark:text-white">Denah / Monitoring Map</h2>
                         </div>
 
-                        <div className="mt-6 flex-1 min-h-0">
-                            <div className="relative h-full w-full rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-white/10 overflow-hidden transition-colors duration-300 shadow-inner">
-                                {/* Light Pattern */}
-                                <div className="absolute inset-0 dark:hidden opacity-[0.05]"
-                                    style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #1e3a8a 2px, transparent 0)', backgroundSize: '32px 32px' }}>
-                                </div>
-                                {/* Dark Pattern */}
-                                <div className="absolute inset-0 hidden dark:block opacity-20"
-                                    style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,.12) 1px, transparent 0)', backgroundSize: '28px 28px' }}>
-                                </div>
+                        <div className="mt-6 flex-1 min-h-0 bg-gray-100 dark:bg-gray-800 rounded-2xl relative border border-gray-200 dark:border-white/10 overflow-auto scrollbar-hide" ref={mapContainerRef}>
+                            <div className="relative min-w-[2000px] transition-all duration-500 shadow-inner" ref={mapWrapperRef}>
+                                <img 
+                                    src={isDarkMode ? denahDark : denahLight} 
+                                    alt="Denah Rumah Sakit" 
+                                    className="w-full h-auto block pointer-events-none"
+                                />
+                                
+                                <div className="absolute inset-0">
+                                    {ticketsToday.filter(t => t.status === 'open' && t.coordX != null && t.coordY != null).map(t => (
+                                        <div 
+                                            key={t.id} 
+                                            className="absolute group z-10"
+                                            style={{ 
+                                                left: `${t.coordX}%`, 
+                                                top: `${t.coordY}%`,
+                                                transform: 'translate(-50%, -50%)'
+                                            }}
+                                        >
+                                            <div className="relative">
+                                                {/* Ripple effect for open tickets */}
+                                                <div className="absolute inset-0 w-8 h-8 -m-1.5 rounded-full bg-red-500 animate-ping opacity-75"></div>
+                                                
+                                                {/* Point */}
+                                                <div className={`w-6 h-6 rounded-full bg-red-400 shadow-lg shadow-red-500/40 ring-4 ring-white/50 dark:ring-white/20 relative z-20 cursor-pointer ${t.isNew ? 'animate-bounce' : ''}`}>
+                                                </div>
 
-                                <div className="absolute top-16 left-20">
-                                    <div className="w-5 h-5 rounded-full bg-red-500 shadow-lg shadow-red-500/40 ring-4 ring-white/50 dark:ring-white/20">
-                                    </div>
-                                    <div className="mt-2 text-sm font-bold text-gray-700 dark:text-white/80 drop-shadow-sm">IGD</div>
-                                </div>
-
-                                <div className="absolute top-32 right-40">
-                                    <div className="w-5 h-5 rounded-full bg-yellow-400 shadow-lg shadow-yellow-400/40 ring-4 ring-white/50 dark:ring-white/20">
-                                    </div>
-                                    <div className="mt-2 text-sm font-bold text-gray-700 dark:text-white/80 drop-shadow-sm text-center">RAWAT<br />INAP</div>
-                                </div>
-
-                                <div className="absolute bottom-32 left-32">
-                                    <div className="w-5 h-5 rounded-full bg-green-500 shadow-lg shadow-green-500/40 ring-4 ring-white/50 dark:ring-white/20">
-                                    </div>
-                                    <div className="mt-2 text-sm font-bold text-gray-700 dark:text-white/80 drop-shadow-sm">LAB</div>
-                                </div>
-
-                                <div className="absolute bottom-28 right-32">
-                                    <div className="w-5 h-5 rounded-full bg-green-500 shadow-lg shadow-green-500/40 ring-4 ring-white/50 dark:ring-white/20">
-                                    </div>
-                                    <div className="mt-2 text-sm font-bold text-gray-700 dark:text-white/80 drop-shadow-sm">RADIOLOGI</div>
-                                </div>
-
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                    <div className="w-5 h-5 rounded-full bg-yellow-400 shadow-lg shadow-yellow-400/40 ring-4 ring-white/50 dark:ring-white/20 mx-auto">
-                                    </div>
-                                    <div className="mt-2 text-sm font-bold text-gray-700 dark:text-white/80 drop-shadow-sm text-center">FARMASI</div>
+                                                {/* Bubble Chat / Tooltip (Always Visible) */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-64 z-30 transform -translate-y-1 transition-all duration-300">
+                                                    <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-2xl shadow-2xl border border-gray-200 dark:border-white/20 text-sm">
+                                                        <div className="font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1.5 text-xs">{t.unit}</div>
+                                                        <div className="font-bold text-base leading-snug line-clamp-3">{t.title}</div>
+                                                        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-white/10 text-[11px] text-gray-500 dark:text-gray-400 flex justify-between items-center">
+                                                            <span>ID: {t.id}</span>
+                                                            <span className="font-bold text-red-500">LIVE MONITOR</span>
+                                                        </div>
+                                                    </div>
+                                                    {/* Arrow */}
+                                                    <div className="w-4 h-4 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-white/20 rotate-45 absolute -bottom-2 left-1/2 -translate-x-1/2"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
