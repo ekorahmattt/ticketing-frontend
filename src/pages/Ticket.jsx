@@ -869,7 +869,7 @@ export default function Ticket() {
                 messages.map((msg, idx) => {
                   const isMine = msg.sender_type === 'device' || msg.sender_type === 'user';
                   const timeMatch = msg.created_at.match(/ (\d{2}:\d{2})/);
-                  const timeFormatted = timeMatch ? timeMatch[1] + ' WIB' : '';
+                  const timeFormatted = timeMatch ? timeMatch[1] + ' WITA' : '';
                   return (
                     <div key={idx} className={`flex flex-col gap-1 max-w-[85%] ${isMine ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
                       <div className={`p-3 text-sm ${isMine ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'}`}>
