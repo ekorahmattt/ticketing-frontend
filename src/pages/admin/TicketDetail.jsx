@@ -665,7 +665,7 @@ export default function TicketDetail() {
 
             <div>
               <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Deskripsi Tambahan</label>
-              <textarea readOnly rows="2" className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none font-medium text-sm resize-none" value={ticket.description || '-'}></textarea>
+              <textarea readOnly rows="6" className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 rounded-lg p-2.5 outline-none font-medium text-sm resize-none" value={ticket.description || '-'}></textarea>
             </div>
 
             {attachments && attachments.length > 0 && (

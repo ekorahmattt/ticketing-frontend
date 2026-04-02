@@ -23,6 +23,50 @@ export default function Monitoring() {
   const mapContainerRef = useRef(null);
   const mapWrapperRef = useRef(null);
 
+  // === Drag to Scroll State ===
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const handleMouseDown = (e) => {
+    if (view !== 'map' || !mapContainerRef.current) return;
+    
+    // Only drag with left click (don't drag if clicking buttons/badges)
+    if (e.button !== 0) return;
+    
+    // If clicking on interactive elements, don't drag
+    if (e.target.closest('button') || e.target.closest('a')) return;
+
+    setIsDragging(true);
+    setStartX(e.pageX - mapContainerRef.current.offsetLeft);
+    setStartY(e.pageY - mapContainerRef.current.offsetTop);
+    setScrollLeft(mapContainerRef.current.scrollLeft);
+    setScrollTop(mapContainerRef.current.scrollTop);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || !mapContainerRef.current) return;
+    e.preventDefault();
+    
+    const x = e.pageX - mapContainerRef.current.offsetLeft;
+    const y = e.pageY - mapContainerRef.current.offsetTop;
+    const walkX = (x - startX) * 1.5; 
+    const walkY = (y - startY) * 1.5;
+    
+    mapContainerRef.current.scrollLeft = scrollLeft - walkX;
+    mapContainerRef.current.scrollTop = scrollTop - walkY;
+  };
+
   useEffect(() => {
     const observer = new MutationObserver(() => {
       setIsDarkMode(document.documentElement.classList.contains('dark'));
@@ -32,13 +76,18 @@ export default function Monitoring() {
   }, []);
 
   useEffect(() => {
-    const newTicket = tickets.find(t => t.isNew && t.coord_x != null && t.coord_y != null);
-    if (newTicket && mapContainerRef.current && mapWrapperRef.current && view === 'map') {
+    // Priority: 1. A ticket marked as 'isNew', 2. Newest 'open' ticket, 3. Newest 'process' ticket
+    const focusTicket = 
+      tickets.find(t => t.isNew && t.coord_x != null && t.coord_y != null) ||
+      tickets.find(t => (t.status === 'baru' || t.status === 'open') && t.coord_x != null && t.coord_y != null) ||
+      tickets.find(t => (t.status === 'proses' || t.status === 'process' || t.status === 'diproses') && t.coord_x != null && t.coord_y != null);
+
+    if (focusTicket && mapContainerRef.current && mapWrapperRef.current && view === 'map') {
       const container = mapContainerRef.current;
       const wrapper = mapWrapperRef.current;
 
-      const targetX = (parseFloat(newTicket.coord_x) / 100) * wrapper.offsetWidth;
-      const targetY = (parseFloat(newTicket.coord_y) / 100) * wrapper.offsetHeight;
+      const targetX = (parseFloat(focusTicket.coord_x) / 100) * wrapper.offsetWidth;
+      const targetY = (parseFloat(focusTicket.coord_y) / 100) * wrapper.offsetHeight;
 
       container.scrollTo({
         left: targetX - container.offsetWidth / 2,
@@ -204,7 +253,6 @@ export default function Monitoring() {
       fetchTickets(newId, false);
     });
 
-    // Fetch Device Users
     fetch(`${API_BASE}/api/device-users`, { headers: apiHeaders(user) })
       .then(res => res.json())
       .then(data => {
@@ -213,7 +261,6 @@ export default function Monitoring() {
         }
       }).catch(console.error);
 
-    // Fetch Categories & Subcategories
     Promise.all([
       fetch(`${API_BASE}/api/categories`, { headers: apiHeaders(user) }).then(r => r.json()),
       fetch(`${API_BASE}/api/subcategories`, { headers: apiHeaders(user) }).then(r => r.json())
@@ -235,7 +282,6 @@ export default function Monitoring() {
     };
   }, [user]);
 
-  // Statistik & Filter Hari Ini
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const ticketsToday = tickets.filter(t => t.created_at && t.created_at.startsWith(todayStr));
@@ -251,19 +297,16 @@ export default function Monitoring() {
   };
 
   const displayTickets = ticketsToday.filter(t => {
-    // Status Filter
     let matchStatus = true;
     if (filterStatus === 'Open') matchStatus = t.status === 'baru' || t.status === 'open';
     else if (filterStatus === 'Diproses') matchStatus = t.status === 'proses' || t.status === 'process';
     else if (filterStatus === 'Selesai') matchStatus = t.status === 'selesai' || t.status === 'done';
     
-    // Unit Filter
     let matchUnit = true;
     if (filterUnit !== 'Semua Unit') {
       matchUnit = t.reporter_unit?.toLowerCase() === filterUnit.toLowerCase();
     }
 
-    // Search Query
     let matchSearch = true;
     if (searchTableQuery) {
       const q = searchTableQuery.toLowerCase();
@@ -274,7 +317,6 @@ export default function Monitoring() {
 
     return matchStatus && matchUnit && matchSearch;
   }).sort((a, b) => {
-    // Urutan prioritas status
     const getStatusRank = (status) => {
       const s = status?.toLowerCase();
       if (s === 'baru' || s === 'open') return 1;
@@ -282,15 +324,9 @@ export default function Monitoring() {
       if (s === 'selesai' || s === 'done') return 3;
       return 4;
     };
-
     const rankA = getStatusRank(a.status);
     const rankB = getStatusRank(b.status);
-
-    if (rankA !== rankB) {
-      return rankA - rankB;
-    }
-
-    // Jika status sama, urutkan berdasarkan waktu (terbaru di atas)
+    if (rankA !== rankB) return rankA - rankB;
     const timeA = a.created_at || "";
     const timeB = b.created_at || "";
     return timeB.localeCompare(timeA);
@@ -299,7 +335,7 @@ export default function Monitoring() {
   const availableUnits = ['Semua Unit', ...new Set(ticketsToday.map(t => t.reporter_unit).filter(Boolean))];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 overflow-hidden">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Command Center - Hari Ini</h1>
       </div>
@@ -311,14 +347,13 @@ export default function Monitoring() {
         <StatCard title="Selesai" value={selesai.toString()} colorClass="text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400" icon={<span className="font-bold text-xl">{selesai}</span>} />
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 transition-colors duration-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 transition-colors duration-200 overflow-hidden flex flex-col flex-1 min-h-0">
         <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
           <div className="flex items-center gap-4 w-full xl:w-auto justify-between xl:justify-start">
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">Daftar Laporan Masuk</h2>
             <ViewSwitcher view={view} setView={setView} />
           </div>
           <div className="flex flex-wrap gap-2 w-full xl:w-auto">
-            {/* Filter Status */}
             <select 
               className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
               value={filterStatus}
@@ -330,7 +365,6 @@ export default function Monitoring() {
               <option>Selesai</option>
             </select>
 
-            {/* Filter Unit */}
             <select 
               className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
               value={filterUnit}
@@ -341,7 +375,6 @@ export default function Monitoring() {
               ))}
             </select>
 
-            {/* Search Bar */}
             <div className="relative w-full sm:w-auto">
               <input
                 type="text"
@@ -355,7 +388,6 @@ export default function Monitoring() {
               </svg>
             </div>
 
-            {/* Tambah Laporan Button */}
             <button
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition w-full sm:w-auto flex items-center justify-center gap-2 shadow-sm"
@@ -369,92 +401,123 @@ export default function Monitoring() {
         </div>
 
         {view === 'list' ? (
-          isLoading ? (
-            <div className="p-6 text-center text-gray-500">Memuat data...</div>
-          ) : ticketsToday.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">Belum ada laporan hari ini.</div>
-          ) : displayTickets.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">Tidak ada laporan yang sesuai filter.</div>
-          ) : (
-            <Table headers={["ID Laporan", "Waktu", "Pelapor", "Unit / Lokasi", "Jenis Gangguan", "Status", "Teknisi"]} >
-              {displayTickets.map((item, i) => (
-                <tr
-                  key={i}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                  onClick={() => navigate(`/admin/ticket/${item.id}`)}
-                >
-                  <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">TCK-{item.id}</td>
-                  <td className="py-4 px-6">{getFormatTime(item.created_at)}</td>
-                  <td className="py-4 px-6 font-medium text-gray-800 dark:text-gray-200">{item.reporter_name || '-'}</td>
-                  <td className="py-4 px-6">{item.reporter_unit || '-'}</td>
-                  <td className="py-4 px-6">{item.subcategory || item.category || '-'}</td>
-                  <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
-                  <td className="py-4 px-6">{item.teknisi || '-'}</td>
-                </tr>
-              ))}
-            </Table>
-          )
+          <div className="flex-1 overflow-auto">
+            {isLoading ? (
+              <div className="p-6 text-center text-gray-500">Memuat data...</div>
+            ) : ticketsToday.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">Belum ada laporan hari ini.</div>
+            ) : displayTickets.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">Tidak ada laporan yang sesuai filter.</div>
+            ) : (
+              <Table headers={["ID Laporan", "Waktu", "Pelapor", "Unit / Lokasi", "Jenis Gangguan", "Status", "Teknisi"]} >
+                {displayTickets.map((item, i) => (
+                  <tr
+                    key={i}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                    onClick={() => navigate(`/admin/ticket/${item.id}`)}
+                  >
+                    <td className="py-4 px-6 font-medium text-gray-900 dark:text-gray-100">TCK-{item.id}</td>
+                    <td className="py-4 px-6">{getFormatTime(item.created_at)}</td>
+                    <td className="py-4 px-6 font-medium text-gray-800 dark:text-gray-200">{item.reporter_name || '-'}</td>
+                    <td className="py-4 px-6">{item.reporter_unit || '-'}</td>
+                    <td className="py-4 px-6">{item.subcategory || item.category || '-'}</td>
+                    <td className="py-4 px-6"><StatusBadge status={item.status} /></td>
+                    <td className="py-4 px-6">{item.teknisi || '-'}</td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+          </div>
         ) : (
-          <div className="flex-1 min-h-[600px] bg-gray-50 dark:bg-gray-800/50 relative overflow-auto scrollbar-hide border-t border-gray-100 dark:border-gray-800" ref={mapContainerRef}>
+          <div 
+            className={`flex-1 min-h-[600px] bg-gray-50 dark:bg-gray-800/50 relative overflow-auto scrollbar-hide border-t border-gray-100 dark:border-gray-800 ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`} 
+            ref={mapContainerRef}
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeave}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+          >
             <div className="relative min-w-[2000px] shadow-inner" ref={mapWrapperRef}>
               <img 
                 src={isDarkMode ? denahDark : denahLight} 
                 alt="Hospital Map" 
                 className="w-full h-auto block select-none pointer-events-none"
               />
-              
               <div className="absolute inset-0">
-                {ticketsToday.filter(t => (t.status === 'baru' || t.status === 'open') && t.coord_x != null && t.coord_y != null).map(t => (
-                  <div 
-                    key={t.id} 
-                    className="absolute group z-10"
-                    style={{ 
-                      left: `${t.coord_x}%`, 
-                      top: `${t.coord_y}%`,
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  >
-                    <div className="relative">
-                      {/* Ripple effect */}
-                      <div className="absolute inset-0 w-8 h-8 -m-2.5 rounded-full bg-red-500 animate-ping opacity-75"></div>
-                      
-                      {/* Point */}
-                      <div className={`w-5 h-5 rounded-full bg-red-500 border-4 border-white dark:border-gray-900 shadow-xl relative z-20 cursor-pointer ${t.isNew ? 'animate-bounce' : ''}`}>
-                      </div>
+                {ticketsToday.filter(t => t.coord_x != null && t.coord_y != null).map(t => {
+                  const s = t.status?.toLowerCase();
+                  const isOpen = s === 'baru' || s === 'open';
+                  const isProcess = s === 'proses' || s === 'process' || s === 'diproses';
+                  const isDone = s === 'selesai' || s === 'done';
+                  const isFocus = isOpen || isProcess;
 
-                      {/* Bubble Chat (Always Visible for Admin Monitoring) */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-60 z-30 transform -translate-y-1 transition-all duration-300">
-                        <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{t.reporter_unit || 'UNIT'}</span>
-                            <span className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 leading-tight">{t.title}</span>
-                            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-[10px]">
-                              <span className="text-gray-400 font-mono">TCK-{t.id}</span>
-                              <span className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded font-black uppercase">Live</span>
+                  let pointBg = "bg-gray-400";
+                  let rippleColor = "bg-gray-400";
+                  let ringColor = "border-gray-200 dark:border-gray-800";
+
+                  if (isOpen) {
+                    pointBg = "bg-red-500"; rippleColor = "bg-red-500"; ringColor = "border-white dark:border-gray-900 shadow-red-500/50";
+                  } else if (isProcess) {
+                    pointBg = "bg-yellow-500"; rippleColor = "bg-yellow-500"; ringColor = "border-white dark:border-gray-900 shadow-yellow-500/50 text-black";
+                  } else if (isDone) {
+                    pointBg = "bg-green-500"; rippleColor = "bg-green-500"; ringColor = "border-white dark:border-gray-900 shadow-green-500/50";
+                  }
+
+                  return (
+                    <div 
+                      key={t.id} 
+                      className={`absolute group transition-all duration-500 ${isFocus ? 'z-20' : 'z-10'}`}
+                      style={{ left: `${t.coord_x}%`, top: `${t.coord_y}%`, transform: 'translate(-50%, -50%)' }}
+                    >
+                      <div className="relative">
+                        {isFocus && (
+                          <div className={`absolute inset-0 w-8 h-8 -m-1.5 rounded-full ${rippleColor} animate-ping opacity-75`}></div>
+                        )}
+                        <div className={`w-5 h-5 rounded-full ${pointBg} border-4 ${ringColor} shadow-xl relative z-20 cursor-pointer ${t.isNew ? 'animate-bounce' : ''}`}></div>
+                        <div 
+                          className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-60 z-30 transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 
+                            ${!isDone 
+                                ? (isFocus ? 'opacity-100 scale-100' : 'opacity-80 scale-90 group-hover:opacity-100 group-hover:scale-100') 
+                                : 'opacity-0 scale-50 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto'
+                            }`}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/ticket/${t.id}`); }}
+                        >
+                          <div className={`bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-2xl border ${!isDone ? (isFocus ? 'border-indigo-500/50 ring-2 ring-indigo-500/10' : 'border-gray-200 dark:border-gray-700') : 'border-green-500/30'}`}>
+                            <div className="flex flex-col gap-0.5 text-left">
+                              <div className="flex justify-between items-start mb-1.5">
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{t.reporter_unit || 'UNIT'}</span>
+                                  <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 leading-tight">{t.reporter_name || '-'}</span>
+                                </div>
+                                <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${isOpen ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' : isProcess ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400' : 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400'}`}>
+                                  {t.status}
+                                </span>
+                              </div>
+                              <span className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 leading-tight">{t.title}</span>
+                              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-[10px]">
+                                <span className="text-gray-400 font-mono">TCK-{t.id}</span>
+                                <span className="text-gray-400">{getFormatTime(t.created_at)}</span>
+                              </div>
                             </div>
                           </div>
+                          <div className={`w-3 h-3 bg-white dark:bg-gray-800 border-r border-b ${!isDone ? (isFocus ? 'border-indigo-500/50' : 'border-gray-200 dark:border-gray-700') : 'border-green-500/30'} rotate-45 absolute -bottom-1.5 left-1/2 -translate-x-1/2`}></div>
                         </div>
-                        <div className="w-3 h-3 bg-white dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 rotate-45 absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal Tambah Laporan */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg overflow-visible flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Tambah Laporan Manual</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -462,17 +525,13 @@ export default function Monitoring() {
             </div>
 
             <div className="p-6 overflow-visible space-y-5">
-              
-              {/* Nama Pelapor Dropdown */}
               <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nama Pelapor</label>
                 <div
                   className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
                   onClick={() => setIsNameDropdownOpen(!isNameDropdownOpen)}
                 >
-                  <span className={reportUser.name ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
-                    {reportUser.name || "Pilih / Cari Nama Pelapor..."}
-                  </span>
+                  <span className={reportUser.name ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>{reportUser.name || "Pilih / Cari Nama Pelapor..."}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isNameDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
@@ -481,49 +540,31 @@ export default function Monitoring() {
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
                     <div className="p-2 border-b border-gray-100 dark:border-gray-700">
                       <input
-                        type="text"
-                        placeholder="Cari nama pegawai..."
+                        type="text" placeholder="Cari nama pegawai..."
                         className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
-                        value={nameSearchQuery}
-                        onChange={(e) => setNameSearchQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (filteredNames.length > 0) handleSelectName(filteredNames[0]);
-                          }
-                        }}
+                        value={nameSearchQuery} onChange={(e) => setNameSearchQuery(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (filteredNames.length > 0) handleSelectName(filteredNames[0]); } }}
                         autoFocus
                       />
                     </div>
                     <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                      {filteredNames.length > 0 ? (
-                        filteredNames.map((name, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
-                            onClick={() => handleSelectName(name)}
-                          >
-                            <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{name}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-sm text-gray-500 text-center">Nama tidak ditemukan</div>
-                      )}
+                      {filteredNames.length > 0 ? filteredNames.map((name, idx) => (
+                        <div key={idx} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0" onClick={() => handleSelectName(name)}>
+                          <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{name}</p>
+                        </div>
+                      )) : <div className="p-4 text-sm text-gray-500 text-center">Nama tidak ditemukan</div>}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Nama Unit Dropdown */}
               <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nama Unit</label>
                 <div
                   className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
                   onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
                 >
-                  <span className={reportUser.unit ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
-                    {reportUser.unit || "Pilih / Cari Unit..."}
-                  </span>
+                  <span className={reportUser.unit ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>{reportUser.unit || "Pilih / Cari Unit..."}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isUnitDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
@@ -532,55 +573,35 @@ export default function Monitoring() {
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
                     <div className="p-2 border-b border-gray-100 dark:border-gray-700">
                       <input
-                        type="text"
-                        placeholder="Cari unit..."
+                        type="text" placeholder="Cari unit..."
                         className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
-                        value={unitSearchQuery}
-                        onChange={(e) => setUnitSearchQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (filteredUnits.length > 0) handleSelectUnit(filteredUnits[0]);
-                          }
-                        }}
+                        value={unitSearchQuery} onChange={(e) => setUnitSearchQuery(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (filteredUnits.length > 0) handleSelectUnit(filteredUnits[0]); } }}
                         autoFocus
                       />
                     </div>
                     <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                      {filteredUnits.length > 0 ? (
-                        filteredUnits.map((unit, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
-                            onClick={() => handleSelectUnit(unit)}
-                          >
-                            <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{unit}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-sm text-gray-500 text-center">Unit tidak ditemukan</div>
-                      )}
+                      {filteredUnits.length > 0 ? filteredUnits.map((u, idx) => (
+                        <div key={idx} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0" onClick={() => handleSelectUnit(u)}>
+                          <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{u}</p>
+                        </div>
+                      )) : <div className="p-4 text-sm text-gray-500 text-center">Unit tidak ditemukan</div>}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Kategori Gangguan */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Kategori Gangguan</label>
                 <select 
                    className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
-                   value={selectedCategory}
-                   onChange={handleCategoryChange}
+                   value={selectedCategory} onChange={handleCategoryChange}
                 >
                   <option value="">-- Pilih Kategori --</option>
-                  {categories.map((c, idx) => (
-                    <option key={idx} value={c.category_name}>{c.category_name}</option>
-                  ))}
+                  {categories.map((c, idx) => <option key={idx} value={c.category_name}>{c.category_name}</option>)}
                 </select>
               </div>
 
-              {/* Jenis Gangguan Dropdown */}
               {subcategories.length > 0 && (
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Jenis Gangguan</label>
@@ -588,9 +609,7 @@ export default function Monitoring() {
                     className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer flex justify-between items-center"
                     onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
                   >
-                    <span className={selectedSubCategory ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
-                      {selectedSubCategory || "-- Pilih Jenis Gangguan --"}
-                    </span>
+                    <span className={selectedSubCategory ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>{selectedSubCategory || "-- Pilih Jenis Gangguan --"}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 transition-transform ${isSubCategoryDropdownOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
@@ -599,34 +618,19 @@ export default function Monitoring() {
                     <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg top-full left-0">
                       <div className="p-2 border-b border-gray-100 dark:border-gray-700">
                         <input
-                          type="text"
-                          placeholder="Cari jenis gangguan..."
+                          type="text" placeholder="Cari jenis gangguan..."
                           className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
-                          value={subCategorySearchQuery}
-                          onChange={(e) => setSubCategorySearchQuery(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              if (filteredSubCategories.length > 0) handleSelectSubCategory(filteredSubCategories[0].name);
-                            }
-                          }}
+                          value={subCategorySearchQuery} onChange={(e) => setSubCategorySearchQuery(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (filteredSubCategories.length > 0) handleSelectSubCategory(filteredSubCategories[0].name); } }}
                           autoFocus
                         />
                       </div>
                       <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                        {filteredSubCategories.length > 0 ? (
-                          filteredSubCategories.map((s, idx) => (
-                            <div
-                              key={idx}
-                              className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0"
-                              onClick={() => handleSelectSubCategory(s.name)}
-                            >
-                              <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{s.name}</p>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-4 text-sm text-gray-500 text-center">Jenis gangguan tidak ditemukan</div>
-                        )}
+                        {filteredSubCategories.length > 0 ? filteredSubCategories.map((s, idx) => (
+                          <div key={idx} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-0" onClick={() => handleSelectSubCategory(s.name)}>
+                            <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{s.name}</p>
+                          </div>
+                        )) : <div className="p-4 text-sm text-gray-500 text-center">Jenis gangguan tidak ditemukan</div>}
                       </div>
                     </div>
                   )}
@@ -635,15 +639,9 @@ export default function Monitoring() {
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition">Batal</button>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSimpanManual}
-                disabled={isSubmitting}
+                onClick={handleSimpanManual} disabled={isSubmitting}
                 className={isSubmitting ? "px-6 py-2 bg-blue-300 text-white font-medium rounded-lg shadow-sm cursor-not-allowed" : "px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm"}
               >
                 {isSubmitting ? "Menyimpan..." : "Simpan"}
