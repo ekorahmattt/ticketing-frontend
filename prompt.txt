@@ -1,234 +1,52 @@
-Buatkan tampilan **Admin Dashboard untuk Sistem Ticketing IT Support** menggunakan **React JS (Vite)** dengan desain modern, responsif, modular, dan scalable.
-
-Gunakan layout dashboard profesional dengan:
-
-* Sidebar navigation di kiri
-* Topbar di atas
-* Main content area
-* Dukungan Dark Mode dan Light Mode
-* UI bersih dan mudah digunakan oleh admin IT
-
-Gunakan dummy data dan komponen reusable.
-
----
-
-# Struktur Folder yang Wajib Digunakan
-
-Pisahkan halaman dan komponen agar modular dan mudah dikembangkan.
-
-Gunakan struktur:
-
-src/
-
-* pages/ → hanya berisi halaman utama
-* components/ → berisi semua komponen reusable
-* components/layout/ → komponen layout global
-* components/ui/ → komponen UI umum
-* components/feature-specific/ → komponen khusus fitur
-
-Jangan menaruh komponen reusable di dalam folder pages.
-
----
-
-# Struktur Menu Sidebar
-
-1. Dashboard
-2. Monitoring Laporan
-3. Kelola Perangkat
-4. Kelola User Admin
-5. Toggle Dark / Light Mode
-
----
-
-# 1. Halaman Dashboard
-
-## Statistik Laporan
-
-Stat cards:
-
-* Total laporan
-* Laporan hari ini
-* Laporan selesai
-* Laporan diproses
-* Laporan terbuka
-
-Filter:
-
-* Rentang waktu
-* Status
-* Kategori
-* Unit / lokasi (opsional)
-
-Tambahkan grafik distribusi laporan.
-
----
-
-## Riwayat Laporan (Selain Hari Ini)
-
-Tabel riwayat laporan lampau.
-
-Kolom:
-
-* ID laporan
-* Jenis gangguan
-* Pelapor / unit
-* Status
-* Prioritas
-* Tanggal laporan
-* Tanggal selesai
-
----
-
-# 2. Halaman Monitoring Laporan Gangguan
-
-Command center real-time.
-
-## Statistik Hari Ini
-
-* Laporan baru
-* Diproses
-* Selesai
-* Total hari ini
-
----
-
-## View Switch: Daftar ↔ Denah
-
-Tambahkan komponen ViewSwitcher.
-
-Hanya satu tampilan aktif:
-
-* List View
-* Denah View
-
----
-
-## List View — Laporan Hari Ini
-
-Tabel real-time:
-
-* Waktu laporan
-* Unit / lokasi
-* Jenis gangguan
-* Status
-* Prioritas
-* Teknisi
-
----
-
-## Denah View — Lokasi Laporan
-
-Denah interaktif:
-
-* Marker koordinat laporan
-* Warna berdasarkan status
-* Tooltip detail
-* Zoom / pan opsional
-
----
-
-# 3. Halaman Kelola Perangkat
-
-## Statistik Perangkat
-
-* Total perangkat
-* Jumlah per jenis
-* Status perangkat
-
----
-
-## View Switch: Daftar ↔ Denah
-
-Gunakan komponen yang sama dengan monitoring.
-
----
-
-## List View — Daftar Perangkat
-
-Kolom:
-
-* Device ID
-* Nama pengguna
-* Unit
-* Jenis perangkat
-* Hostname
-* IP Address
-* Status
-* Lokasi
-
-Filter:
-
-* Kategori perangkat
-* Nama unit
-* Nama pengguna
-
----
-
-## Denah View — Penempatan Perangkat
-
-Fitur:
-
-* Menampilkan posisi perangkat
-* Tambah perangkat dengan klik lokasi
-* Form input perangkat
-* Simpan koordinat
-
----
-
-# 4. Halaman Kelola User Admin
-
-Tabel akun admin:
-
-* Nama
-* Username / email
-* Role
-* Status akun
-* Aksi
-
----
-
-# Komponen Reusable yang Harus Dibuat
-
-Layout:
-
-* Sidebar
-* Topbar
-* DashboardLayout
-
-UI:
-
-* StatCard
-* Table
-* FilterBar
-* Modal
-* Tooltip / Popover
-* StatusBadge
-* Button
-
-Feature:
-
-* ViewSwitcher
-* FloorPlanCanvas
-
----
-
-# Dark Mode dan Light Mode
-
-* Toggle global
-* Berlaku ke seluruh aplikasi
-* Gunakan class-based theme
-
----
-
-# Persyaratan Teknis
-
-Gunakan:
-
-* React JS (Vite)
-* React Router
-* TailwindCSS
-* Struktur modular
-* Dummy data
-* Responsif untuk desktop dan tablet
-
-Fokus pada frontend saja tanpa backend.
+Buatkan halaman React modern dengan nama file HelpPage.jsx untuk "Panduan Pengguna Sistem Pelaporan Gangguan IT" dengan desain clean, responsive, dan user-friendly.
+
+Kriteria:
+- Gunakan React (Vite)
+- Gunakan layout card atau section
+- Gunakan icon (optional: lucide-react)
+- Gunakan Tailwind CSS (jika tersedia)
+- UI seperti dashboard modern
+
+Struktur halaman:
+
+1. Header:
+- Judul: "Panduan Lapor Gangguan IT"
+- Deskripsi singkat
+
+2. Section: Cara Melaporkan Gangguan (step-by-step)
+- Step 1: Klik "Laporkan Gangguan!"
+  - Jelaskan tombol floating bisa digeser dan disembunyikan
+  - Jelaskan cara memunculkan kembali melalui menu profil
+- Step 2: Konfirmasi laporan
+- Step 3: Isi data (nama, unit, kategori, jenis)
+- Step 4: Tambahkan detail (opsional)
+- Step 5: Kirim laporan
+
+3. Section: Tips Cepat (highlight box)
+
+4. Section: Status Laporan
+- Open, Process, Done, On Hold, Canceled
+- Gunakan badge atau color indicator
+
+5. Section: Chat dengan IT
+- Penjelasan fitur direct message
+
+6. Section: Informasi Perangkat
+
+7. Section: Tidak Bisa Akses Sistem?
+- Gunakan perangkat lain
+- WhatsApp / Telepon
+- Tambahkan note bahwa admin tetap input ke sistem
+
+8. Section: Catatan Penting
+
+Tambahan:
+- Gunakan card UI
+- Gunakan spacing yang nyaman
+- Gunakan heading yang jelas
+- Tambahkan placeholder untuk gambar di setiap step
+- Buat reusable component untuk step (StepCard)
+
+Output:
+- 1 file React component (HelpPage.jsx)
+- Clean dan readable

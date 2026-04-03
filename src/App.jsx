@@ -12,6 +12,7 @@ import DeviceUsers from './pages/admin/DeviceUsers'
 import SubCategories from './pages/admin/SubCategories'
 import TicketDetail from './pages/admin/TicketDetail'
 import DeviceDetails from './pages/admin/DeviceDetails'
+import HelpPage from './pages/HelpPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/" element={<Ticket />} />
           <Route path="/monitor" element={<Monitor />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/help" element={<HelpPage />} />
 
           {/* Admin routes — protected via AdminLayout's auth check */}
           <Route path="/admin" element={<AdminLayout />}>

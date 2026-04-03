@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 import { API_BASE, SOCKET_URL } from '../utils/api';
@@ -580,8 +580,27 @@ export default function Ticket() {
 
             {ticketStatus === "form" && (
               <div className="flex-1 flex flex-col">
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-2xl flex items-start gap-3 group">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-blue-800 dark:text-blue-300 font-medium leading-relaxed">
+                      Baru pertama kali atau butuh bantuan cara melapor?
+                      <Link to="/help" className="ml-1 inline-flex items-center gap-1 font-bold text-blue-700 dark:text-blue-400 hover:underline decoration-2 underline-offset-4">
+                        Lihat Panduan Pengguna (Manual Book)
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </Link>
+                    </p>
+                  </div>
+                </div>
+
                 <h1 className="text-lg lg:text-3xl font-bold text-gray-800 mb-2">
-                  LAPOR GANGGUAN
+                  LAPOR GANGGUAN IT
                 </h1>
                 <p className="text-gray-500 mb-6">
                   Silakan isi detail gangguan yang terjadi.

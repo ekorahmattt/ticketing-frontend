@@ -9,6 +9,7 @@ export default function Sidebar({ isDarkMode, toggleTheme, onLogout }) {
     { name: "Kelola Device Users", path: "/admin/device-users" },
     { name: "Jenis Gangguan", path: "/admin/subcategories" },
     { name: "Kelola User Admin", path: "/admin/users" },
+    { name: "Panduan Pengguna", path: "/help" },
   ];
 
   return (
