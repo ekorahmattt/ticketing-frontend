@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 
 import { API_BASE, SOCKET_URL } from '../utils/api';
 import { io } from 'socket.io-client';
+import dmNotifSound from '../sounds/dm notif.mp3';
+import statusTicketSound from '../sounds/status ticket.mp3';
 
 const DEFAULT_USER = {
   name: "",
@@ -124,6 +126,10 @@ export default function Ticket() {
       socketRef.current = socket;
       socket.on('ticketUpdated', async (payload) => {
         if (payload?.data && String(payload.data.ticket_id) === String(ticketId)) {
+          // Play status update sound
+          const audio = new Audio(statusTicketSound);
+          audio.play().catch(err => console.log("Autoplay blocked or audio error:", err));
+
           if (payload.data.new_status) {
             setCurrentTicketDbStatus(payload.data.new_status);
           }
@@ -146,6 +152,10 @@ export default function Ticket() {
 
       socket.on('newMessage', (payload) => {
         if (String(payload?.ticket_id) === String(ticketId)) {
+          // Play notification sound
+          const audio = new Audio(dmNotifSound);
+          audio.play().catch(err => console.log("Autoplay blocked or audio error:", err));
+
           fetch(`${API_BASE}/api/tickets/${ticketId}/messages`)
             .then(res => res.json())
             .then(data => {

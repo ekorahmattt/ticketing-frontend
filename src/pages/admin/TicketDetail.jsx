@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE, apiHeaders, SOCKET_URL } from '../../utils/api';
 import { io } from 'socket.io-client';
+import dmNotifSound from '../../sounds/dm notif.mp3';
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -165,6 +166,10 @@ export default function TicketDetail() {
 
     socket.on('newMessage', (payload) => {
       if (String(payload?.ticket_id) === String(id)) {
+        // Play notification sound
+        const audio = new Audio(dmNotifSound);
+        audio.play().catch(err => console.log("Autoplay blocked or audio error:", err));
+        
         fetchMessages();
       }
     });
