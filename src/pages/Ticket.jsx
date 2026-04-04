@@ -6,6 +6,7 @@ import { API_BASE, SOCKET_URL } from '../utils/api';
 import { io } from 'socket.io-client';
 import dmNotifSound from '../sounds/dm notif.mp3';
 import statusTicketSound from '../sounds/status ticket.mp3';
+import { UploadCloud, X, Image as ImageIcon, Plus } from 'lucide-react';
 
 const DEFAULT_USER = {
   name: "",
@@ -49,6 +50,8 @@ export default function Ticket() {
 
   const [description, setDescription] = useState("");
   const [screenshot, setScreenshot] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isNameDropdownOpen, setIsNameDropdownOpen] = useState(false);
@@ -110,6 +113,60 @@ export default function Ticket() {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Handle Paste from Clipboard
+  useEffect(() => {
+    const handlePaste = (e) => {
+      if (ticketStatus !== "form") return;
+      
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (const item of items) {
+        if (item.type.indexOf("image") !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            setScreenshot(blob);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [ticketStatus]);
+
+  // Handle Preview URL cleanup
+  useEffect(() => {
+    if (!screenshot) {
+      setPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(screenshot);
+    setPreviewUrl(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [screenshot]);
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragging(true);
+    } else if (e.type === "dragleave") {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith("image/")) {
+        setScreenshot(file);
+      }
+    }
+  };
 
   useEffect(() => {
     let socket;
@@ -705,23 +762,86 @@ export default function Ticket() {
                 </div>
 
                 {/* Upload */}
+                {/* Upload & Drag-and-Drop Area */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Foto (Opsional)
+                  <label className="block text-sm font-medium text-gray-700 mb-3 flex justify-between items-center">
+                    <span>Lampiran Gambar (Opsional)</span>
+                    <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">Mendukung Copy-Paste</span>
                   </label>
-                  <input
-                    type="file"
-                    onChange={(e) => setScreenshot(e.target.files[0])}
-                    accept="image/*"
-                    className="w-full border rounded-lg p-2"
-                  />
-                  {screenshot && (
-                    <div className="mt-4">
-                      <p className="text-xs text-gray-500 mb-2">Preview Foto:</p>
+                  
+                  {!previewUrl ? (
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragOver={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById('file-upload').click()}
+                      className={`relative border-2 border-dashed rounded-2xl p-8 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer group
+                        ${isDragging 
+                          ? 'border-blue-500 bg-blue-50 scale-[1.02]' 
+                          : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'}`}
+                    >
+                      <input
+                        id="file-upload"
+                        type="file"
+                        onChange={(e) => setScreenshot(e.target.files[0])}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      
+                      <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors duration-300
+                        ${isDragging ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500'}`}>
+                        <UploadCloud className="w-8 h-8" />
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-gray-700 font-bold text-base mb-1">
+                          Klik, Tempel, atau Tarik Screenshot ke sini
+                        </p>
+                        <p className="text-gray-400 text-xs">
+                          Maksimal 5MB (PNG, JPG) • Mendukung Ctrl+V
+                        </p>
+                      </div>
+                      
+                      {isDragging && (
+                        <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-[1px] rounded-2xl flex items-center justify-center">
+                          <p className="text-blue-600 font-bold animate-bounce flex items-center gap-2">
+                            <Plus className="w-5 h-5" /> Lepaskan untuk Upload
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative rounded-2xl overflow-hidden border-2 border-blue-100 bg-gray-50 group shadow-md transition-all hover:shadow-lg">
                       <img
-                        src={URL.createObjectURL(screenshot)}
+                        src={previewUrl}
                         alt="Preview"
-                        className="max-h-48 rounded border shadow-sm object-contain"
+                        className="w-full max-h-[400px] object-contain mx-auto transition-transform duration-500 group-hover:scale-[1.01]"
+                      />
+                      
+                      {/* Overlay Controls */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setScreenshot(null); }}
+                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-lg"
+                        >
+                          <X className="w-5 h-5" /> Hapus Gambar
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); document.getElementById('file-upload').click(); }}
+                          className="bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-xl flex items-center gap-2 font-bold transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-lg"
+                        >
+                          <ImageIcon className="w-5 h-5" /> Ganti Gambar
+                        </button>
+                      </div>
+                      
+                      {/* Hidden Input for change button */}
+                      <input
+                        id="file-upload"
+                        type="file"
+                        onChange={(e) => setScreenshot(e.target.files[0])}
+                        accept="image/*"
+                        className="hidden"
                       />
                     </div>
                   )}

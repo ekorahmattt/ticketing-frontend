@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import step1 from '../screenshot/konfirmasi.png';
+import step2 from '../screenshot/form.png';
+import step3 from '../screenshot/form detail.png';
+import step4 from '../screenshot/form reported.png';
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import {
   HelpCircle,
   MousePointer2,
@@ -24,10 +29,14 @@ import {
   Play,
   Youtube,
   ChevronDown,
-  Download
+  Download,
+  ZoomIn,
+  ZoomOut,
+  RefreshCcw,
+  Zap
 } from 'lucide-react';
 
-const StepCard = ({ number, title, description, icon: Icon, imagePlaceholder }) => (
+const StepCard = ({ number, title, description, icon: Icon, imagePlaceholder, image }) => (
   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
     <div className="flex items-start gap-4">
       <div className="relative">
@@ -42,14 +51,77 @@ const StepCard = ({ number, title, description, icon: Icon, imagePlaceholder }) 
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-4">{description}</p>
 
-        {/* Image Placeholder */}
+        {/* Image Display Area with Zoom & Pan */}
         <div className="relative aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
-          <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
-            <Layout className="w-8 h-8 opacity-50" />
-            <span className="text-xs uppercase tracking-wider font-semibold">{imagePlaceholder || 'Screenshot Area'}</span>
-          </div>
+          {image ? (
+            <div className="w-full h-full cursor-grab active:cursor-grabbing">
+              <TransformWrapper
+                initialScale={1}
+                initialPositionX={0}
+                initialPositionY={0}
+                wheel={{ step: 0.1 }}
+                doubleClick={{ disabled: false }}
+                centerOnInit={true}
+              >
+                {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
+                  <React.Fragment>
+                    {/* Floating Controls Overlay */}
+                    <div className="absolute bottom-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <button
+                        onClick={() => zoomIn()}
+                        className="p-1.5 bg-white/90 dark:bg-slate-800/90 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:text-blue-600 transition-colors"
+                        title="Zoom In"
+                      >
+                        <ZoomIn className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => zoomOut()}
+                        className="p-1.5 bg-white/90 dark:bg-slate-800/90 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:text-blue-600 transition-colors"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => resetTransform()}
+                        className="p-1.5 bg-white/90 dark:bg-slate-800/90 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:text-blue-600 transition-colors"
+                        title="Reset"
+                      >
+                        <RefreshCcw className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Hint Label */}
+                    <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                      <span className="px-2 py-1 bg-black/40 backdrop-blur-md rounded-md text-[10px] text-white/90 font-bold uppercase tracking-widest flex items-center gap-1.5 border border-white/10">
+                        <Zap className="w-3 h-3 text-yellow-400" />
+                        Scroll to Zoom
+                      </span>
+                    </div>
+
+                    <TransformComponent
+                      wrapperClassName="!w-full !h-full"
+                      contentClassName="!w-full !h-full"
+                    >
+                      <img
+                        src={image}
+                        alt={title}
+                        className="w-full h-full object-contain pointer-events-none"
+                      />
+                    </TransformComponent>
+                  </React.Fragment>
+                )}
+              </TransformWrapper>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
+              <Layout className="w-8 h-8 opacity-50" />
+              <span className="text-xs uppercase tracking-wider font-semibold">
+                {imagePlaceholder || 'Screenshot Area'}
+              </span>
+            </div>
+          )}
           {/* Subtle gradient overlay to make it look "premium" */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none -z-0"></div>
         </div>
       </div>
     </div>
@@ -142,6 +214,7 @@ const HelpPage = () => {
                       title="Konfirmasi Laporan"
                       description="Setelah tombol diklik, modal konfirmasi akan muncul. Pastikan Anda benar-benar ingin membuat laporan baru sebelum melanjutkan ke form pengisian."
                       icon={CheckCircle2}
+                      image={step1}
                       imagePlaceholder="Modal Konfirmasi Laporan"
                     />
                     <StepCard
@@ -149,6 +222,7 @@ const HelpPage = () => {
                       title="Isi Data Utama"
                       description="Pilih kategori gangguan (Software, Hardware, Jaringan, dsb) dan sub-kategori yang sesuai. Identitas Anda dan unit atau ruangan Anda akan otomatis terdeteksi jika sistem mengenali perangkat Anda."
                       icon={ClipboardList}
+                      image={step2}
                       imagePlaceholder="Form Input Kategori & Unit"
                     />
                     <StepCard
@@ -156,6 +230,7 @@ const HelpPage = () => {
                       title="Lengkapi Detail Gangguan"
                       description="Berikan deskripsi singkat tentang kendala yang dialami. Informasi yang detail (seperti langkah-langkah yang dilakukan sebelum error) akan sangat membantu tim IT mendiagnosa lebih cepat."
                       icon={FileEdit}
+                      image={step3}
                       imagePlaceholder="Textarea Deskripsi Keluhan"
                     />
                     <StepCard
@@ -163,6 +238,7 @@ const HelpPage = () => {
                       title="Kirim Laporan"
                       description="Klik tombol 'Kirim Sekarang'. Laporan Anda akan segera masuk ke antrean Tim IT dan Anda akan mendapatkan nomor tiket digital."
                       icon={Send}
+                      image={step4}
                       imagePlaceholder="Bukti Laporan Berhasil Terkirim"
                     />
                   </div>
@@ -172,7 +248,7 @@ const HelpPage = () => {
 
             {/* Video Tutorial Section */}
             <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm transition-all duration-500">
-              <button 
+              <button
                 onClick={() => setIsVideoOpen(!isVideoOpen)}
                 className="w-full flex items-center justify-between p-6 md:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
               >
@@ -194,7 +270,7 @@ const HelpPage = () => {
                 <div className="p-6 md:p-8 space-y-6">
                   {/* YouTube Embed Placeholder */}
                   <div className="relative aspect-video bg-black rounded-2xl overflow-hidden group shadow-2xl">
-                    <iframe 
+                    <iframe
                       className="absolute inset-0 w-full h-full"
                       src="https://www.youtube.com/embed/dQw4w9WgXcQ" // Ganti dengan ID video tutorial aslinya
                       title="Tutorial Sistem Pelaporan IT"
@@ -205,17 +281,17 @@ const HelpPage = () => {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <a 
-                      href="https://youtube.com" 
-                      target="_blank" 
+                    <a
+                      href="https://youtube.com"
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
                     >
                       <Youtube className="w-5 h-5 text-red-600" />
                       Tonton di YouTube
                     </a>
-                    <a 
-                      href="/docs/tutorial_video.mp4" 
+                    <a
+                      href="/docs/tutorial_video.mp4"
                       download
                       className="flex-1 py-4 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-black/10"
                     >
@@ -269,7 +345,7 @@ const HelpPage = () => {
                 Butuh versi cetak atau ingin membaca secara offline? Download panduan lengkap dalam format PDF.
               </p>
               <a
-                href="/docs/manual_book.pdf"
+                href="\docs\Panduan Pengguna Sistem Lapor Gangguan Layanan TI.pdf"
                 download
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-[0.98]"
               >
