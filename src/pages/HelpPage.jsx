@@ -4,6 +4,7 @@ import step1 from '../screenshot/konfirmasi.png';
 import step2 from '../screenshot/form.png';
 import step3 from '../screenshot/form detail.png';
 import step4 from '../screenshot/form reported.png';
+import bubbleDemo from '../screenshot/floating bubble.mp4';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import {
   HelpCircle,
@@ -36,7 +37,7 @@ import {
   Zap
 } from 'lucide-react';
 
-const StepCard = ({ number, title, description, icon: Icon, imagePlaceholder, image }) => (
+const StepCard = ({ number, title, description, icon: Icon, imagePlaceholder, image, video }) => (
   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
     <div className="flex items-start gap-4">
       <div className="relative">
@@ -53,7 +54,16 @@ const StepCard = ({ number, title, description, icon: Icon, imagePlaceholder, im
 
         {/* Image Display Area with Zoom & Pan */}
         <div className="relative aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
-          {image ? (
+          {video ? (
+            <video
+              src={video}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : image ? (
             <div className="w-full h-full cursor-grab active:cursor-grabbing">
               <TransformWrapper
                 initialScale={1}
@@ -203,6 +213,7 @@ const HelpPage = () => {
                   title="Klik Tombol 'Laporkan Gangguan!'"
                   description="Gunakan fitur widget melayang (floating button) di pojok kiri bawah layar. Tombol ini bersifat 'draggable' yang bisa Anda geser sesuai kenyamanan. Jika mengganggu, Anda dapat menyembunyikannya melalui fitur 'Hide Widget' di menu profil dan memunculkannya kembali dari sana."
                   icon={MousePointer2}
+                  video={bubbleDemo}
                   imagePlaceholder="Tampilan Widget Lapor & Drag Demo"
                 />
 
@@ -270,19 +281,21 @@ const HelpPage = () => {
                 <div className="p-6 md:p-8 space-y-6">
                   {/* YouTube Embed Placeholder */}
                   <div className="relative aspect-video bg-black rounded-2xl overflow-hidden group shadow-2xl">
-                    <iframe
-                      className="absolute inset-0 w-full h-full"
-                      src="https://www.youtube.com/embed/dQw4w9WgXcQ" // Ganti dengan ID video tutorial aslinya
-                      title="Tutorial Sistem Pelaporan IT"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    ></iframe>
+                    {isVideoOpen && (
+                      <iframe
+                        className="absolute inset-0 w-full h-full"
+                        src="https://www.youtube.com/embed/d-3O1LKRm8s?autoplay=1&mute=1&loop=1&playlist=d-3O1LKRm8s"
+                        title="Tutorial Sistem Pelaporan IT"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                    )}
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4">
                     <a
-                      href="https://youtube.com"
+                      href="https://youtu.be/d-3O1LKRm8s"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
@@ -291,7 +304,7 @@ const HelpPage = () => {
                       Tonton di YouTube
                     </a>
                     <a
-                      href="/docs/tutorial_video.mp4"
+                      href="/docs/Panduan Pengguna.mp4"
                       download
                       className="flex-1 py-4 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-black/10"
                     >
@@ -376,11 +389,8 @@ const HelpPage = () => {
                 Chat dengan IT
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
-                Butuh koordinasi lebih lanjut? Anda dapat berkomunikasi langsung dengan teknisi yang menangani laporan Anda melalui fitur <span className="font-bold text-slate-900 dark:text-white">Direct Message</span> di dalam detail tiket.
+                Butuh koordinasi lebih lanjut? Anda dapat berkomunikasi langsung dengan teknisi yang menangani laporan Anda melalui fitur <span className="font-bold text-slate-900 dark:text-white">Direct Message</span> setelah tiket terkirim.
               </p>
-              <button className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
-                Lihat Detail Fitur Chat <ChevronRight className="w-4 h-4" />
-              </button>
             </section>
 
             {/* Device Info */}
@@ -407,7 +417,7 @@ const HelpPage = () => {
                 <p>Jika perangkat Anda mati total dan tidak bisa membuka web ini:</p>
                 <ol className="list-decimal list-inside space-y-2 font-medium">
                   <li>Gunakan perangkat rekan/kantor lain.</li>
-                  <li>Hubungi Ext IT di <span className="font-bold text-red-700 dark:text-red-400">123 / WhatsApp Group</span>.</li>
+                  <li>Hubungi Tim IT SIMRS di <span className="font-bold text-red-700 dark:text-red-400">212 / WhatsApp Group</span>.</li>
                 </ol>
                 <div className="p-3 bg-white dark:bg-red-950/40 rounded-lg text-xs italic border border-red-200 dark:border-red-900/40">
                   <p><b>Note:</b> Admin IT akan tetap menginput data Anda ke sistem ini meskipun laporan dikirim via telepon/WA.</p>
