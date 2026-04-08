@@ -304,7 +304,7 @@ const HelpPage = () => {
                       Tonton di YouTube
                     </a>
                     <a
-                      href="/docs/Panduan Pengguna.mp4"
+                      href="docs/Manual_Video.mp4"
                       download
                       className="flex-1 py-4 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-black/10"
                     >
@@ -358,7 +358,7 @@ const HelpPage = () => {
                 Butuh versi cetak atau ingin membaca secara offline? Download panduan lengkap dalam format PDF.
               </p>
               <a
-                href="\docs\Panduan Pengguna Sistem Lapor Gangguan Layanan TI.pdf"
+                href="docs/Manual_Book.pdf"
                 download
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-[0.98]"
               >
