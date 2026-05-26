@@ -17,12 +17,21 @@ export function apiHeaders(user) {
 }
 
 /**
- * URL dasar backend — baca dari env, fallback ke XAMPP lokal.
+ * Baca variabel wajib dari .env (Vite: prefix VITE_).
+ * Nilai tidak di-hardcode di repo agar URL backend/websocket tidak ikut ter-commit.
  */
-export const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||
-  'http://localhost/ticketing-backend/index.php';
+function requireEnv(name) {
+  const value = import.meta.env[name];
+  if (!value || String(value).trim() === '') {
+    throw new Error(
+      `Environment variable "${name}" belum diatur. Salin .env.example menjadi .env lalu isi URL backend dan websocket.`
+    );
+  }
+  return String(value).trim().replace(/\/$/, '');
+}
 
-export const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  'http://localhost:3001';
+/** URL dasar backend (CodeIgniter index.php) */
+export const API_BASE = requireEnv('VITE_API_BASE_URL');
+
+/** URL server Socket.IO */
+export const SOCKET_URL = requireEnv('VITE_SOCKET_URL');

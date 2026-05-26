@@ -47,6 +47,9 @@ export default function Ticket() {
   const [user, setUser] = useState(DEFAULT_USER);
   const [categories, setCategories] = useState([]);
   const [rawEmployees, setRawEmployees] = useState([]);
+  // Nama pelapor yang diprioritaskan (user-user yang terdaftar untuk device yang terdeteksi).
+  // Tetap tidak membatasi search ke user lain.
+  const [priorityReporterNames, setPriorityReporterNames] = useState([]);
 
   const [description, setDescription] = useState("");
   const [screenshot, setScreenshot] = useState(null);
@@ -61,11 +64,51 @@ export default function Ticket() {
   const [unitSearchQuery, setUnitSearchQuery] = useState("");
 
   const filteredNames = useMemo(() => {
-    const uniqueNames = Array.from(new Set(rawEmployees.map(emp => emp.full_name || emp.name).filter(Boolean)));
-    return uniqueNames.filter(name =>
-      name.toLowerCase().includes(nameSearchQuery.toLowerCase())
-    );
-  }, [nameSearchQuery, rawEmployees]);
+    const normalize = (v) => String(v || '').trim().toLowerCase();
+
+    const uniqueAllNames = [];
+    const seen = new Set();
+    for (const emp of rawEmployees || []) {
+      const displayName = emp?.full_name || emp?.name;
+      const key = normalize(displayName);
+      if (!key) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueAllNames.push(displayName);
+    }
+
+    const q = normalize(nameSearchQuery);
+    if (!q) {
+      // Tanpa keyword: tampilkan priority terlebih dahulu, lalu sisanya.
+      const result = [];
+      const resultSeen = new Set();
+      for (const n of priorityReporterNames || []) {
+        const key = normalize(n);
+        if (!key || resultSeen.has(key)) continue;
+        resultSeen.add(key);
+        result.push(n);
+      }
+      for (const n of uniqueAllNames) {
+        const key = normalize(n);
+        if (!resultSeen.has(key)) result.push(n);
+      }
+      return result;
+    }
+
+    const priorityIndex = new Map((priorityReporterNames || []).map((n, idx) => [normalize(n), idx]));
+    const indexMap = new Map(uniqueAllNames.map((n, idx) => [normalize(n), idx]));
+
+    const matches = uniqueAllNames.filter(name => normalize(name).includes(q));
+    // Urutkan: yang ada di priority dulu (sesuai urutan priority), sisanya mengikuti urutan asli.
+    return matches.slice().sort((a, b) => {
+      const ia = priorityIndex.get(normalize(a));
+      const ib = priorityIndex.get(normalize(b));
+      if (ia != null && ib != null) return ia - ib;
+      if (ia != null) return -1;
+      if (ib != null) return 1;
+      return (indexMap.get(normalize(a)) ?? 0) - (indexMap.get(normalize(b)) ?? 0);
+    });
+  }, [nameSearchQuery, rawEmployees, priorityReporterNames]);
 
   const filteredUnits = useMemo(() => {
     const uniqueUnits = Array.from(new Set(rawEmployees.map(emp => emp.unit_name).filter(Boolean)));
@@ -75,7 +118,16 @@ export default function Ticket() {
   }, [unitSearchQuery, rawEmployees]);
 
   const handleSelectName = (name) => {
-    setUser({ ...user, name });
+    const normalize = (v) => String(v || '').trim().toLowerCase();
+    const emp = (rawEmployees || []).find(e => normalize(e?.full_name || e?.name) === normalize(name));
+    const nextName = emp ? (emp.full_name || emp.name || name) : name;
+
+    setUser(prev => ({
+      ...prev,
+      name: nextName,
+      // Biar konsisten: unit otomatis ikut terisi dari data user.
+      unit: emp?.unit_name || prev.unit,
+    }));
     setIsNameDropdownOpen(false);
     setNameSearchQuery("");
   };
@@ -310,34 +362,102 @@ export default function Ticket() {
   };
 
   useEffect(() => {
-    // === 1. Detect Device ===
-    fetch(`${API_BASE}/api/tickets/detect-device`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success' && data.device_detected) {
-          const dev = data.data;
-          setUser(prev => ({
-            ...prev,
-            device_id: dev.device_id,
-            hostname: dev.hostname || dev.device_name || '-',
-            ip_address: dev.ip_address || '-',
-            unit: dev.unit || '-',
-            name: dev.users && dev.users.length > 0 ? dev.users[0].name : '',
-            device_brand: dev.device_brand || '',
-            device_model: dev.device_model || '',
-            detection_mode: 'LAN'
-          }));
-        }
-      }).catch(console.error);
+    const normalize = (v) => String(v || '').trim().toLowerCase();
 
-    // === 2. Fetch Device Users ===
-    fetch(`${API_BASE}/api/device-users`)
+    const pickReporterFromEmployees = (employees, deviceUsers) => {
+      if (!Array.isArray(employees) || employees.length === 0) return null;
+      if (!Array.isArray(deviceUsers) || deviceUsers.length === 0) return null;
+
+      const candidates = deviceUsers
+        .map(u => (u && typeof u === 'object' ? (u.name || u.full_name || '') : String(u || '')))
+        .map(normalize)
+        .filter(Boolean);
+
+      if (candidates.length === 0) return null;
+
+      return (
+        employees.find(e => candidates.includes(normalize(e.name))) ||
+        employees.find(e => candidates.includes(normalize(e.full_name))) ||
+        null
+      );
+    };
+
+    const pickUnitFromEmployees = (employees, unitLike) => {
+      if (!Array.isArray(employees) || employees.length === 0) return null;
+      const q = normalize(unitLike);
+      if (!q) return null;
+      return employees.find(e => normalize(e.unit_name) === q) || null;
+    };
+
+    const detectDeviceReq = fetch(`${API_BASE}/api/tickets/detect-device`)
       .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          setRawEmployees(data.data || []);
+      .catch(() => null);
+
+    const deviceUsersReq = fetch(`${API_BASE}/api/device-users`)
+      .then(res => res.json())
+      .catch(() => null);
+
+    Promise.all([detectDeviceReq, deviceUsersReq]).then(([detectRes, usersRes]) => {
+      const employees = usersRes?.status === 'success' ? (usersRes.data || []) : [];
+      setRawEmployees(employees);
+
+      const isOk = detectRes?.status === 'success' && detectRes.data;
+      if (!isOk) return;
+
+      // Selalu isi IP/hostname dari hasil detect-device.
+      const dev = detectRes.data;
+      setUser(prev => ({
+        ...prev,
+        device_id: dev.device_id ?? prev.device_id,
+        hostname: dev.hostname || dev.device_name || prev.hostname || '-',
+        ip_address: dev.ip_address || prev.ip_address || '-',
+        device_brand: dev.device_brand || prev.device_brand || '',
+        device_model: dev.device_model || prev.device_model || '',
+        // detection_mode hanya jadi "LAN" jika device benar-benar terdeteksi (match di DB).
+        detection_mode: detectRes.device_detected ? 'LAN' : prev.detection_mode,
+      }));
+
+      if (detectRes.device_detected) {
+        // Prioritaskan dropdown Nama Pelapor sesuai user-user yang terdaftar untuk device ini.
+        // Data deviceUserAssignment hanya mengirim `name`, jadi kita lookup ke rawEmployees untuk dapat `full_name` & unit_name.
+        const priorityNames = [];
+        const prioritySeen = new Set();
+        const deviceUsers = Array.isArray(dev.users) ? dev.users : [];
+        for (const du of deviceUsers) {
+          const duName = du?.name;
+          const emp = (employees || []).find(e => normalize(e?.name) === normalize(duName));
+          const displayName = emp?.full_name || emp?.name || duName;
+          const key = normalize(displayName);
+          if (!key || prioritySeen.has(key)) continue;
+          prioritySeen.add(key);
+          if (displayName) priorityNames.push(displayName);
         }
-      }).catch(console.error);
+        setPriorityReporterNames(priorityNames);
+
+        // Reporter default: ambil user pertama berdasarkan urutan deviceUsers (bukan urutan alfabet tabel).
+        let reporter = null;
+        for (const du of deviceUsers) {
+          const duName = du?.name;
+          const emp = (employees || []).find(e => normalize(e?.name) === normalize(duName));
+          if (emp) {
+            reporter = emp;
+            break;
+          }
+        }
+        // Fallback: kalau tidak ketemu berdasarkan du.name (misal bentuk data tidak seragam).
+        if (!reporter) reporter = pickReporterFromEmployees(employees, dev.users);
+        const matchedUnit = reporter?.unit_name ? reporter : pickUnitFromEmployees(employees, dev.unit);
+
+        setUser(prev => ({
+          ...prev,
+          name: reporter ? (reporter.full_name || reporter.name || prev.name) : prev.name,
+          unit: matchedUnit ? (matchedUnit.unit_name || prev.unit) : (dev.unit || prev.unit),
+        }));
+      }
+      else {
+        setPriorityReporterNames([]);
+      }
+    });
 
     // === 3. Fetch Categories & Subcategories ===
     Promise.all([

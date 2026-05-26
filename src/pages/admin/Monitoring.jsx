@@ -29,6 +29,19 @@ export default function Monitoring() {
   const [startY, setStartY] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
+  const [mapZoom, setMapZoom] = useState(1);
+
+  const MIN_MAP_ZOOM = 0.6;
+  const MAX_MAP_ZOOM = 1.8;
+  const ZOOM_STEP = 0.1;
+
+  const handleZoomIn = () => {
+    setMapZoom(prev => Math.min(MAX_MAP_ZOOM, Number((prev + ZOOM_STEP).toFixed(2))));
+  };
+
+  const handleZoomOut = () => {
+    setMapZoom(prev => Math.max(MIN_MAP_ZOOM, Number((prev - ZOOM_STEP).toFixed(2))));
+  };
 
   const handleMouseDown = (e) => {
     if (view !== 'map' || !mapContainerRef.current) return;
@@ -112,6 +125,7 @@ export default function Monitoring() {
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
   const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] = useState(false);
   const [subCategorySearchQuery, setSubCategorySearchQuery] = useState("");
+  const [manualDescription, setManualDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Data Table Filter States
@@ -182,7 +196,7 @@ export default function Monitoring() {
         category_id: catObj ? catObj.category_id : null,
         subcategory_id: subCatObj ? subCatObj.id : null,
         title: `${selectedCategory} - ${selectedSubCategory}`,
-        description: 'Laporan Manual dari Admin',
+        description: manualDescription.trim() || 'Laporan Manual dari Admin',
         created_at: clientCreatedAt
       };
 
@@ -199,6 +213,7 @@ export default function Monitoring() {
         setReportUser({ name: '', unit: '' });
         setSelectedCategory('');
         setSelectedSubCategory('');
+        setManualDescription('');
         fetchTickets();
       } else {
         alert(json.message || 'Gagal menyimpan laporan');
@@ -389,7 +404,10 @@ export default function Monitoring() {
             </div>
 
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                setManualDescription('');
+                setIsModalOpen(true);
+              }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition w-full sm:w-auto flex items-center justify-center gap-2 shadow-sm"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -437,7 +455,33 @@ export default function Monitoring() {
             onMouseUp={handleMouseUp}
             onMouseMove={handleMouseMove}
           >
-            <div className="relative min-w-[2000px] shadow-inner" ref={mapWrapperRef}>
+            <div className="absolute top-4 right-4 z-30 flex items-center gap-2 bg-white/90 dark:bg-gray-900/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-2 py-1.5">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition font-bold"
+                title="Zoom Out"
+              >
+                -
+              </button>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 min-w-[48px] text-center">
+                {Math.round(mapZoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition font-bold"
+                title="Zoom In"
+              >
+                +
+              </button>
+            </div>
+
+            <div
+              className="relative shadow-inner"
+              ref={mapWrapperRef}
+              style={{ minWidth: `${Math.round(2000 * mapZoom)}px` }}
+            >
               <img 
                 src={isDarkMode ? denahDark : denahLight} 
                 alt="Hospital Map" 
@@ -517,7 +561,13 @@ export default function Monitoring() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg overflow-visible flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Tambah Laporan Manual</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setManualDescription('');
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -636,10 +686,31 @@ export default function Monitoring() {
                   )}
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Deskripsi Tambahan (Opsional)
+                </label>
+                <textarea
+                  value={manualDescription}
+                  onChange={(e) => setManualDescription(e.target.value)}
+                  rows="4"
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tuliskan detail tambahan jika diperlukan..."
+                />
+              </div>
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition">Batal</button>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setManualDescription('');
+                }}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+              >
+                Batal
+              </button>
               <button
                 onClick={handleSimpanManual} disabled={isSubmitting}
                 className={isSubmitting ? "px-6 py-2 bg-blue-300 text-white font-medium rounded-lg shadow-sm cursor-not-allowed" : "px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm"}

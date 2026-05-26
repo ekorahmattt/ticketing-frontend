@@ -9,6 +9,12 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Environment (jangan commit URL/secret lokal)
+.env
+.env.example
+.env.local
+.env.*.local
 dist-ssr
 *.local
 

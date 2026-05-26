@@ -446,6 +446,19 @@ export default function Devices() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const mapWrapperRef = useRef(null);
   const mapContainerRef = useRef(null);
+  const [mapZoom, setMapZoom] = useState(1);
+
+  const MIN_MAP_ZOOM = 0.6;
+  const MAX_MAP_ZOOM = 1.8;
+  const ZOOM_STEP = 0.1;
+
+  const handleZoomIn = () => {
+    setMapZoom(prev => Math.min(MAX_MAP_ZOOM, Number((prev + ZOOM_STEP).toFixed(2))));
+  };
+
+  const handleZoomOut = () => {
+    setMapZoom(prev => Math.max(MIN_MAP_ZOOM, Number((prev - ZOOM_STEP).toFixed(2))));
+  };
 
   const handleMapMouseMove = (e) => {
     if (!mapWrapperRef.current) return;
@@ -989,6 +1002,28 @@ export default function Devices() {
           </>
         ) : (
           <div className="relative h-[650px] bg-gray-50 dark:bg-gray-800/50 overflow-auto scrollbar-hide border-t border-gray-100 dark:border-gray-800" ref={mapContainerRef}>
+            <div className="absolute top-4 right-4 z-[41] flex items-center gap-2 bg-white/90 dark:bg-gray-900/90 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-2 py-1.5">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition font-bold"
+                title="Zoom Out"
+              >
+                -
+              </button>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 min-w-[48px] text-center">
+                {Math.round(mapZoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition font-bold"
+                title="Zoom In"
+              >
+                +
+              </button>
+            </div>
+
             {/* Coordinate Panel */}
             <div className="fixed bottom-10 right-10 z-[40] bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-blue-200 dark:border-blue-900/50 pointer-events-none transition-all duration-300">
               <div className="flex items-center gap-6">
@@ -1006,10 +1041,11 @@ export default function Devices() {
             </div>
 
             <div 
-              className="relative min-w-[2000px] cursor-crosshair group shadow-2xl" 
+              className="relative cursor-crosshair group shadow-2xl"
               ref={mapWrapperRef}
               onMouseMove={handleMapMouseMove}
               onClick={handleMapClick}
+              style={{ minWidth: `${Math.round(2000 * mapZoom)}px` }}
             >
               <img 
                 src={isDarkMode ? denahDark : denahLight} 
