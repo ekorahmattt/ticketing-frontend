@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/ticketing-backend/index.php';
+import { API_BASE } from '../utils/api';
 
 export default function Login() {
   const navigate = useNavigate();
