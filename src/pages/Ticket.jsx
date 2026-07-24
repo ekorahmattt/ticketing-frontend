@@ -23,10 +23,36 @@ function formatDateTime(s) {
   if (!s) return "";
   const [datePart, timePart] = s.split(" ");
   if (!datePart || !timePart) return s;
-  const [y, m, d] = datePart.split("-").map(Number);
+  
+  const now = new Date();
+  const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
   const [hh, mm] = timePart.split(":").map(Number);
+  const timeStr = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+
+  if (datePart === todayDateStr) {
+    return `Hari ini - ${timeStr}`;
+  }
+
+  const [y, m, d] = datePart.split("-").map(Number);
   const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-  return `${d} ${months[m - 1]} ${y} - ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  return `${d} ${months[m - 1]} ${y} - ${timeStr}`;
+}
+
+function formatDateOnly(datePart) {
+  if (!datePart) return "";
+  const now = new Date();
+  const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  if (datePart === todayDateStr) {
+    return `Hari ini`;
+  }
+  
+  const parts = datePart.split("-").map(Number);
+  if (parts.length !== 3) return datePart;
+  const [y, m, d] = parts;
+  const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  return `${d} ${months[m - 1]} ${y}`;
 }
 
 
@@ -50,6 +76,11 @@ export default function Ticket() {
   // Nama pelapor yang diprioritaskan (user-user yang terdaftar untuk device yang terdeteksi).
   // Tetap tidak membatasi search ke user lain.
   const [priorityReporterNames, setPriorityReporterNames] = useState([]);
+
+  const [ticketHistory, setTicketHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [messageHistory, setMessageHistory] = useState([]);
+  const [historyFilter, setHistoryFilter] = useState("ip"); // "ip" or "name"
 
   const [description, setDescription] = useState("");
   const [screenshot, setScreenshot] = useState(null);
@@ -480,7 +511,78 @@ export default function Ticket() {
 
   }, []);
 
+  useEffect(() => {
+    if (historyFilter === "ip" && user.ip_address && user.ip_address !== "-") {
+      setIsLoadingHistory(true);
+      fetch(`${API_BASE}/api/tickets?ip_address=${user.ip_address}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            setTicketHistory(data.data || []);
+          }
+        })
+        .catch(err => console.error("Gagal mengambil riwayat ticket:", err))
+        .finally(() => setIsLoadingHistory(false));
+        
+      fetch(`${API_BASE}/api/messages/history?ip_address=${user.ip_address}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            setMessageHistory(data.data || []);
+          }
+        }).catch(err => console.error(err));
+
+    } else if (historyFilter === "name" && user.name) {
+      setIsLoadingHistory(true);
+      fetch(`${API_BASE}/api/tickets?reporter_name=${encodeURIComponent(user.name)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            setTicketHistory(data.data || []);
+          }
+        })
+        .catch(err => console.error("Gagal mengambil riwayat ticket:", err))
+        .finally(() => setIsLoadingHistory(false));
+        
+      fetch(`${API_BASE}/api/messages/history?reporter_name=${encodeURIComponent(user.name)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            setMessageHistory(data.data || []);
+          }
+        }).catch(err => console.error(err));
+
+    } else {
+      setTicketHistory([]);
+      setMessageHistory([]);
+    }
+  }, [user.ip_address, user.name, historyFilter]);
+
   // Derivations
+  const groupedMessages = useMemo(() => {
+    const groups = {};
+    const filteredHistory = messageHistory.filter(m => String(m.ticket_id) !== String(ticketId));
+    
+    filteredHistory.forEach(msg => {
+      const date = msg.created_at.split(' ')[0];
+      const reporter = msg.ticket_reporter || 'Unknown';
+      
+      if (!groups[date]) groups[date] = {};
+      if (!groups[date][reporter]) groups[date][reporter] = [];
+      
+      groups[date][reporter].push(msg);
+    });
+    
+    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+    return sortedDates.map(date => ({
+      date,
+      reporters: Object.keys(groups[date]).map(reporter => ({
+        name: reporter,
+        messages: groups[date][reporter]
+      }))
+    }));
+  }, [messageHistory]);
+
   const subcategories = useMemo(() => {
     const cat = categories.find(c => c.category_name === selectedCategory);
     return cat ? cat.subcategories : [];
@@ -757,6 +859,74 @@ export default function Ticket() {
                   <p className="text-gray-500">Waktu</p>
                   <p className="font-medium">{formatDateTime(reportTimeStr)}</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Riwayat Ticket */}
+            <div className="bg-white rounded-2xl shadow p-6 space-y-4">
+              <div className="border-b pb-3 space-y-3">
+                <h3 className="text-lg font-bold text-gray-800">
+                  Riwayat Ticket
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    onClick={() => setHistoryFilter("ip")}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors border ${historyFilter === 'ip' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                  >
+                    Komputer ini {user.ip_address !== "-" && `(${user.ip_address})`}
+                  </button>
+                  {user.name && (
+                    <button 
+                      onClick={() => setHistoryFilter("name")}
+                      className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors border ${historyFilter === 'name' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                    >
+                      {user.name}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {isLoadingHistory ? (
+                  <p className="text-sm text-gray-500 text-center py-4">Memuat riwayat...</p>
+                ) : ticketHistory.length > 0 ? (
+                  ticketHistory.map((t, idx) => (
+                    <div key={idx} className="p-3 bg-gray-50 hover:bg-blue-50/50 transition-colors rounded-xl border border-gray-100 flex flex-col gap-1.5 cursor-default group">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold text-sm text-blue-700 bg-blue-100/50 px-2 py-0.5 rounded text-center">TCK-{t.id}</span>
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold tracking-wide uppercase ${
+                          t.status === 'open' || t.status === 'baru' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                          t.status === 'process' || t.status === 'diproses' ? 'bg-sky-100 text-sky-700 border border-sky-200' :
+                          t.status === 'done' || t.status === 'selesai' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                          'bg-gray-100 text-gray-700 border border-gray-200'
+                        }`}>
+                          {t.status}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-gray-800 line-clamp-2 mt-1 leading-relaxed">
+                        {t.title || `${t.category} - ${t.subcategory}`}
+                      </p>
+                      <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-200/60">
+                        <span className="text-[10px] font-medium text-gray-500 flex items-center gap-1">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                           {formatDateTime(t.created_at)}
+                        </span>
+                        {t.teknisi && (
+                          <span className="text-[10px] font-medium text-gray-500 flex items-center gap-1 truncate max-w-[100px]" title={`Teknisi: ${t.teknisi}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                            {t.teknisi}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 flex flex-col items-center justify-center text-gray-400">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                     </svg>
+                     <p className="text-xs font-medium">Belum ada riwayat ticket</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1134,6 +1304,43 @@ export default function Ticket() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+              {/* Riwayat Direct Message Terdahulu */}
+              {groupedMessages.length > 0 && (
+                <div className="space-y-4 mb-4 border-b pb-4 border-dashed border-gray-200">
+                  {groupedMessages.map((group, idx) => (
+                    <div key={idx} className="space-y-3">
+                      <div className="flex justify-center">
+                        <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-1 rounded-full font-medium">
+                          {formatDateOnly(group.date)}
+                        </span>
+                      </div>
+                      {group.reporters.map((rep, rIdx) => (
+                        <div key={rIdx} className="space-y-2">
+                          <div className="text-center text-[10px] text-gray-400 mb-2">
+                             Percakapan oleh {rep.name}
+                          </div>
+                          {rep.messages.map((msg, mIdx) => {
+                            const isMine = msg.sender_type === 'device' || msg.sender_type === 'user';
+                            const timeMatch = msg.created_at.match(/ (\d{2}:\d{2})/);
+                            const timeFormatted = timeMatch ? timeMatch[1] + ' WITA' : '';
+                            return (
+                              <div key={mIdx} className={`flex flex-col gap-0.5 max-w-[85%] ${isMine ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
+                                <div className={`p-2.5 text-xs opacity-80 ${isMine ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'}`}>
+                                  {msg.message}
+                                </div>
+                                <span className={`text-[9px] text-gray-400 ${isMine ? 'mr-1' : 'ml-1'}`}>
+                                  {isMine ? 'Anda' : (msg.sender_name || 'IT Support')} • {timeFormatted} • TCK-{msg.tck_id}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {messages.length > 0 ? (
                 messages.map((msg, idx) => {
                   const isMine = msg.sender_type === 'device' || msg.sender_type === 'user';
